@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DRIVER
+  PASSENGER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum RideRequestStatus {
+  WAITING
+  COMPLETED
+  CANCELLED
+}
+
+enum ConnectedRideStatus {
+  WAITING
+  DRIVING
+  COMPLETED
+  CANCELLED_BY_DRIVER
+  CANCELLED_BY_PASSENGER
+}
+
+enum NotificationType {
+  MESSAGE
+  SYSTEM_ALERT
+  PAYMENT
+  RIDE_UPDATE
+  REVIEW
+  PROMOTIONAL
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  WALLET
+}
+
+model User {
+  id             String              @id @default(uuid())
+  email          String              @unique
+  fullName       String
+  password       String
+  role           Role                @default(DRIVER)
+  user_verified  Boolean             @default(false)
+
+  // Relations
+  userInformation    UserInformation?
+  ridesAsDriver      ConnectedRide[] @relation("DriverRides")
+  ridesAsPassenger   ConnectedRide[] @relation("PassengerRides")
+  rideRequests       RideRequest[]   @relation("PassengerRequests")
+  acceptedRequests   RideRequest[]   @relation("DriverAcceptedRequests")
+  preferredDrivers   PreferredDriver[] @relation("PassengerToDriver")
+  preferredByUsers   PreferredDriver[] @relation("DriverToPassenger")
+  rotations          PassengerRotation[]
+  notifications      Notification[]
+  driverEarnings     DriverEarning[]
+  passengerPayments  PassengerPayment[]
+
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([fullName])
+  @@index([role])
+}
+
+model UserInformation {
+  id          String   @id @default(uuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @unique
+  ID_Card     String
+  SelfiePhoto String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RideRequest {
+  id            String            @id @default(uuid())
+  passenger     User              @relation(fields: [passengerId], references: [id], name: "PassengerRequests", onDelete: Cascade)
+  passengerId   String
+  driver        User?             @relation(fields: [driverId], references: [id], name: "DriverAcceptedRequests", onDelete: SetNull)
+  driverId      String?
+  price         Decimal           @db.Decimal(10,2)
+  fromAddress   String
+  toAddress     String
+  status        RideRequestStatus @default(WAITING)
+  connectedRide ConnectedRide?
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([passengerId])
+  @@index([driverId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ConnectedRide {
+  id              String           @id @default(uuid())
+  driver          User             @relation(fields: [driverId], references: [id], name: "DriverRides", onDelete: Cascade)
+  driverId        String
+  passenger       User             @relation(fields: [passengerId], references: [id], name: "PassengerRides", onDelete: Cascade)
+  passengerId     String
+  rideRequest     RideRequest      @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
+  rideRequestId   String           @unique
+  status          ConnectedRideStatus @default(WAITING)
+  driverEarning   DriverEarning?
+  passengerPayment PassengerPayment?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([driverId, passengerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DriverEarning {
+  id            String         @id @default(uuid())
+  driver        User           @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  driverId      String
+  ride          ConnectedRide  @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  rideId        String         @unique
+  amount        Decimal        @db.Decimal(10,2)
+  fee           Decimal        @db.Decimal(10,2)
+  netEarnings   Decimal        @db.Decimal(10,2)
+  status        PaymentStatus  @default(PAID)
+  paymentDate   DateTime?
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status])
+  @@index([paymentDate])
+}
+
+model PassengerPayment {
+  id            String         @id @default(uuid())
+  passenger     User           @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+  passengerId   String
+  ride          ConnectedRide  @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  rideId        String         @unique
+  amount        Decimal        @db.Decimal(10,2)
+  surcharge     Decimal?       @db.Decimal(10,2)
+  totalPaid     Decimal        @db.Decimal(10,2)
+  paymentMethod PaymentMethod
+  status        PaymentStatus  @default(PAID)
+  paidAt        DateTime?
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status])
+  @@index([paidAt])
+}
+
+model PassengerRotation {
+  id           String       @id @default(uuid())
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  fromAddress  String
+  toAddress    String
+  days         String?     // e.g. ["MON", "WED", "FRI"]
+  time         DateTime?
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  title       String
+  message     String
+  type        NotificationType
+  read        Boolean          @default(false)
+  metadata    Json?
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+model PreferredDriver {
+  id          String   @id @default(uuid())
+  driver      User     @relation("DriverToPassenger", fields: [driverId], references: [id], onDelete: Cascade)
+  driverId    String
+  passenger   User     @relation("PassengerToDriver", fields: [passengerId], references: [id], onDelete: Cascade)
+  passengerId String
+  whyPrefered String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([driverId, passengerId])
+}
