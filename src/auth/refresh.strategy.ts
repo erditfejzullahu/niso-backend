@@ -17,10 +17,13 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'){
     async validate(payload: any){
         return {
             id: payload.sub,
-            username: payload.username,
+            fullName: payload.fullName,
             email: payload.email,
             exp: payload.exp,
             role: payload.role,
+            user_verified: payload.user_verified,
+            user_created: payload.user_created,
+            profileImage: payload.profileImage
           };
     }
 }

@@ -54,6 +54,54 @@ model RefreshToken {
   token String @unique
 }
 
+enum KosovoCity {
+  PRISHTINE           @map("Prishtinë")
+  PRIZREN             @map("Prizren")
+  FERIZAJ             @map("Ferizaj")
+  GJAKOVE             @map("Gjakovë")
+  PEJE                @map("Pejë")
+  MITROVICE           @map("Mitrovicë")
+  GJILAN              @map("Gjilan")
+  PODUJEVE            @map("Podujevë")
+  OBILIQ              @map("Obiliq")
+  FUSHE_KOSOVE        @map("Fushë Kosovë")
+  DRENAS              @map("Drenas")
+  SKENDERAJ           @map("Skenderaj")
+  VUSHTRRI            @map("Vushtrri")
+  LIPJAN              @map("Lipjan")
+  SHTIME              @map("Shtime")
+  SUHAREKE            @map("Suharekë")
+  RAHOVEC             @map("Rahovec")
+  DRAGASH             @map("Dragash")
+  MALISHEVE           @map("Malishevë")
+  KACANIK             @map("Kaçanik")
+  HANI_I_ELEZIT       @map("Hani i Elezit")
+  KAMENICE            @map("Kamenicë")
+  VITI                @map("Viti")
+  GRACANICE           @map("Graçanicë")
+  SHTERPCE            @map("Shtërpcë")
+  KLLOKOT             @map("Kllokot")
+  NOVOBERDE           @map("Novobërdë")
+  RANILLUG            @map("Ranillug")
+  PARTESH             @map("Partesh")
+  JUNIK               @map("Junik")
+  KLINE               @map("Klinë")
+  ISTOG               @map("Istog")
+  DECAN               @map("Deçan")
+  ZUBIN_POTOK         @map("Zubin Potok")
+  ZVECAN              @map("Zveçan")
+  LEPOSAVIQ           @map("Leposaviq")
+  MITROVICE_E_VERIUT  @map("Mitrovicë e Veriut")
+  MAMUSHE             @map("Mamushë")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  RATHER_NOT_SAY
+}
+
+
 model User {
   id             String              @id @default(uuid())
   email          String              @unique
@@ -88,8 +136,11 @@ model UserInformation {
   id          String   @id @default(uuid())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String   @unique
-  ID_Card     String
+  ID_Card     String[]
   SelfiePhoto String
+  address String
+  city KosovoCity
+  gender Gender
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

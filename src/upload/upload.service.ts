@@ -45,7 +45,7 @@ export class UploadService {
         }
     }
 
-    async uploadMultipleFiled(files: Express.Multer.File[], folder?: string) {
+    async uploadMultipleFiles(files: Express.Multer.File[], folder?: string) {
         const uploadPromises = files.map(file => this.uploadFile(file, folder));
 
         const result = await Promise.all(uploadPromises);
