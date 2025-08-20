@@ -10,9 +10,21 @@ export class DriversService {
         private readonly prisma: PrismaService
     ){}
 
+    async getFixedTarifs(userId: string){
+        try {
+            const fixedTarifs = await this.prisma.driverFixedTarifs.findMany({
+                where: {userId}
+            })
+            return {success: true, fixedTarifs};
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
+        }
+    }
+
     async addFixedTarif(userId: string, fixedTarifDto: AddFixedTarifDto){
         try {
-            const user = await this.prisma.user.findUnique({where: {id: userId}})
+            const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true}})
             if(!user){
                 throw new BadRequestException("Nuk u gjet ndonje perdorues, me kete mjet identifikimi.")
             }else{
@@ -36,7 +48,7 @@ export class DriversService {
 
     async updateFixedTarif(userId: string, tarifId: string, fixedTarifDto: UpdateFixedTarifDto){
         try {
-            const user = await this.prisma.user.findUnique({where: {id: userId}})
+            const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true}})
             const tarif = await this.prisma.driverFixedTarifs.findUnique({where: {id: tarifId}});
 
             
@@ -66,8 +78,8 @@ export class DriversService {
 
     async deleteFixedTarif(userId: string, tarifId: string){
         try {
-            const user = await this.prisma.user.findUnique({where: {id: userId}})
-            const tarif = await this.prisma.driverFixedTarifs.findUnique({where: {id: tarifId}});
+            const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true}})
+            const tarif = await this.prisma.driverFixedTarifs.findUnique({where: {id: tarifId}, select: {id: true, userId: true}});
 
             if(!user || !tarif){
                 throw new BadRequestException("Nuk u gejt subjekti i kerkuar.")
@@ -79,6 +91,71 @@ export class DriversService {
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
+
+    async getAvailableRides(){
+        try {
+            const availableRides = await this.prisma.rideRequest.findMany({
+                where: {status: "WAITING"},
+                orderBy: {
+                    createdAt: "desc"
+                },
+                select: {
+                    price: true,
+                    fromAddress: true,
+                    toAddress: true,
+                    status: true,
+                    createdAt: true,
+                    passenger: {
+                        select: {
+                            fullName: true,
+                            image: true,
+                        }
+                    }
+                }
+            })
+
+            return {success: true, availableRides}
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server");
+        }
+    }
+
+    async getRegularClients(userId: string){
+        try {
+            const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true}});
+            if(!user) throw new NotFoundException("Nuk u gjet ndonje perdorues me kete mjet identifikimi.");
+            
+            const groups = await this.prisma.connectedRide.groupBy({
+                by: ["passengerId"],
+                where: {
+                    driverId: user.id,
+                    status: "COMPLETED"
+                },
+                _count: {passengerId: true},
+                having: {passengerId: {_count: {gt: 2}}},
+                orderBy: {_count: {passengerId: "desc"}},
+            })
+
+            const passengerIds = groups.map((g => g.passengerId));
+            if(passengerIds.length === 0) return [];
+
+            const passengers = await this.prisma.user.findMany({
+                where: {id: {in: passengerIds}},
+                select: {id: true, fullName: true, image: true}
+            })
+
+            const countMap = new Map(groups.map(g => [g.passengerId, g._count.passengerId]));
+            const result = passengers
+                .map(p => ({...p, ridesWithDriver: countMap.get(p.id) ?? 0}))
+                .sort((a,b) => b.ridesWithDriver - a.ridesWithDriver);
+            
+            return {success: true, regularClients: result}
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
 }

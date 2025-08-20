@@ -178,6 +178,7 @@ model RideRequest {
   @@index([driverId])
   @@index([status])
   @@index([createdAt])
+  @@index([status, createdAt])
 }
 
 model ConnectedRide {
@@ -196,6 +197,7 @@ model ConnectedRide {
   updatedAt       DateTime         @updatedAt
 
   @@index([driverId, passengerId])
+  @@index([status, driverId])
   @@index([status])
   @@index([createdAt])
 }

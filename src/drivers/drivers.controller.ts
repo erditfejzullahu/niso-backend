@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Param, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import { DriversService } from './drivers.service';
 import { Roles } from 'common/decorators/roles.decorator';
 import { Role, User } from '@prisma/client';
@@ -13,10 +13,31 @@ export class DriversController {
     ){}
 
     @Roles(Role.DRIVER)
+    @Get('all-tarifs')
+    async getTarifs(@Req() req: Request){
+        const user = req.user as User;
+        return await this.driverService.getFixedTarifs(user.id);
+    }
+
+    @Roles(Role.DRIVER)
     @Post('add-tarif')
     async addTarif(@Req() req: Request, @Body() body: AddFixedTarifDto){
         const user = req.user as User;
         return await this.driverService.addFixedTarif(user.id, body);
+    }
+
+    @Roles(Role.DRIVER)
+    @Get('available-rides')
+    async getAvailableRides(@Req() req: Request){
+        const user = req.user as User;
+        return await this.driverService.getAvailableRides();
+    }
+
+    @Roles(Role.DRIVER)
+    @Get('regular-clients')
+    async getRegularClients(@Req() req: Request){
+        const user = req.user as User;
+        return await this.driverService.getRegularClients(user.id);
     }
 
     @Roles(Role.DRIVER)
