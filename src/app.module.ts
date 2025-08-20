@@ -10,6 +10,8 @@ import {ConfigModule} from "@nestjs/config"
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuth } from 'common/guards/jwt.guard';
 import { RolesGuard } from 'common/guards/roles.guards';
+import { UploadService } from './upload/upload.service';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [UsersModule,
@@ -17,9 +19,10 @@ import { RolesGuard } from 'common/guards/roles.guards';
     DriversModule, 
     PrismaModule, 
     AuthModule,
-    ConfigModule.forRoot({envFilePath: '.env', isGlobal: true})
+    ConfigModule.forRoot({envFilePath: '.env', isGlobal: true}),
+    UploadModule
   ],
   controllers: [AppController],
-  providers: [AppService, {provide: APP_GUARD, useClass: JwtAuth}, {provide: APP_GUARD, useClass: RolesGuard}],
+  providers: [AppService, {provide: APP_GUARD, useClass: JwtAuth}, {provide: APP_GUARD, useClass: RolesGuard}, UploadService],
 })
 export class AppModule {}

@@ -9,7 +9,7 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { PassportModule } from '@nestjs/passport';
 
 @Module({
-  providers: [AuthService, JwtStrategy, RefreshStrategy,],
+  providers: [AuthService, JwtStrategy, RefreshStrategy],
   controllers: [AuthController],
   imports: [
     PrismaModule,
