@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, FileTypeValidator, MaxFileSizeValidator, ParseFilePipe, Post, Req, Res, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, FileTypeValidator, MaxFileSizeValidator, ParseFilePipe, Patch, Post, Req, Res, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginUserDto } from './dto/loginUser.dto';
 import type { Response, Request } from 'express';
@@ -10,6 +10,7 @@ import { Public } from 'common/decorators/public.decorator';
 import { Roles } from 'common/decorators/roles.decorator';
 import { Role, User } from '@prisma/client';
 import { VerifyIdentityDto } from './dto/verifyIdentity.dto';
+import { UpdateUserInformationDto } from './dto/updateUser.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -39,7 +40,8 @@ export class AuthController {
                 ]
             })
         )
-        @Body() body: RegisterUserDto, file: Express.Multer.File,
+        file: Express.Multer.File,
+        @Body() body: RegisterUserDto
     ){
         return await this.authService.registerUser(body, file);
     }
@@ -74,4 +76,51 @@ export class AuthController {
 
         return await this.authService.verifyIdentity(user.id, body, files);
     }
+
+    @Roles(Role.DRIVER, Role.PASSENGER)
+    @Post('logout')
+    async logout(@Res({passthrough: true}) res: Response) {
+        const isProduction = process.env.NODE_ENV === "production";
+
+        res.clearCookie('access_token', {
+            httpOnly: true,
+            secure: isProduction, //true in production
+            sameSite: 'lax',
+            // domain: isProduction ? ''
+            maxAge: 1000 * 60 * 60
+        })
+
+        res.clearCookie('refresh_token', {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: "lax",
+            // domain: isProduction ? '.nejatnkosov.com' : undefined,
+            maxAge: 1000 * 60 * 60 * 24 * 7
+        })
+
+        return {success: true};
+    }
+
+    @Roles(Role.DRIVER, Role.PASSENGER)
+    @Patch('updateUserInformation/:id')
+    @UseInterceptors(FileInterceptor('profileImage'))
+    async updateUserInformation(
+        @Req() req: Request,
+        @Body() body: UpdateUserInformationDto, 
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [
+                    new MaxFileSizeValidator({maxSize: 10 * 1024 * 1024}), //10mb
+                    new FileTypeValidator({
+                        fileType: /(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/
+                    })
+                ]
+            })
+        )
+        newImage?: Express.Multer.File
+    ){
+        const user = req.user as User;
+        await this.authService.updateUserInformation(user.id, body, newImage)
+    }
+
 }
