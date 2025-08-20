@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { UploadApiErrorResponse, UploadApiOptions, UploadApiResponse } from "cloudinary";
+import { UploadApiErrorResponse, UploadApiResponse } from "cloudinary";
 import {v2 as cloudinary} from "cloudinary"
 
 @Injectable()
 export class CloudinaryService {
     async uploadFile(file: Express.Multer.File, folder?: string): Promise<UploadApiResponse | UploadApiErrorResponse> {
         return new Promise((resolve, reject) => {
-            const uploadOptions: UploadApiOptions = {};
+            const uploadOptions: any = {};
             if(folder) {
                 uploadOptions.folder = folder;
             }
@@ -21,7 +21,7 @@ export class CloudinaryService {
     }
 
     async uploadFileFromPath(filePath: string, folder?: string): Promise<UploadApiErrorResponse | UploadApiResponse>{
-        const uploadOptions: UploadApiOptions = {}
+        const uploadOptions: any = {}
         if(folder){
             uploadOptions.folder = folder;
         }

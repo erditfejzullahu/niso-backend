@@ -7,11 +7,13 @@ import { JwtModule } from '@nestjs/jwt';
 import {ConfigModule, ConfigService} from "@nestjs/config";
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { PassportModule } from '@nestjs/passport';
+import { UploadModule } from 'src/upload/upload.module';
 
 @Module({
   providers: [AuthService, JwtStrategy, RefreshStrategy],
   controllers: [AuthController],
   imports: [
+    UploadModule,
     PrismaModule,
     PassportModule,
     ConfigModule.forRoot(),

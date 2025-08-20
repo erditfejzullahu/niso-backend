@@ -12,8 +12,8 @@ export class RegisterUserDto {
     email: string;
 
     @IsNumber()
-    @Min(1)
-    @Max(2)
+    @Min(0)
+    @Max(1)
     role: number;
 
     @IsStrongPassword({
@@ -25,5 +25,5 @@ export class RegisterUserDto {
     })
     password: string;
 
-    
+
 }

@@ -2,9 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import bcryptjs from "bcryptjs"
-import { User } from 'generated/prisma';
+import { User } from '@prisma/client';
 import { Response } from 'express';
-
+import { RegisterUserDto } from './dto/registerUser.dto';
 @Injectable()
 export class AuthService {
     constructor(
@@ -50,12 +50,25 @@ export class AuthService {
         if(!user) throw new UnauthorizedException("no user id found");
     }
 
-    async registerUser(){
-        
+    async registerUser(registerDto: RegisterUserDto, imageUrl: string){
+        const user = await this.prisma.user.findUnique({where: {email: registerDto.email}})
+        if(user) throw new UnauthorizedException('Ky email vecse egziston.');
+        const hashedPassword = await bcryptjs.hash(registerDto.password, 10)
+        await this.prisma.user.create({
+            data: {
+                email: registerDto.email,
+                fullName: registerDto.fullName,
+                user_verified: false,
+                role: registerDto.role === 0 ? "DRIVER" : "PASSENGER",
+                password: hashedPassword,
+                image: imageUrl
+            }
+        })
+        return {success: true}
     }
 
     async getTokens(user: User) {
-        const payload = {sub: user.id, username: user.fullName, email: user.email, role: user.role, user_verified: user.user_verified, user_created: user.createdAt};
+        const payload = {sub: user.id, username: user.fullName, email: user.email, role: user.role, user_verified: user.user_verified, user_created: user.createdAt, profileImage: user.image};
 
         const accessToken = await this.jwtService.signAsync(payload, {
             secret: process.env.JWT_ACCESS_SECRET,

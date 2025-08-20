@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -62,6 +61,7 @@ model User {
   password       String
   role           Role                @default(DRIVER)
   user_verified  Boolean             @default(false)
+  image String
 
   // Relations
   refreshToken RefreshToken[]
