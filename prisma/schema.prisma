@@ -49,6 +49,12 @@ enum PaymentMethod {
   WALLET
 }
 
+model RefreshToken {
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  token String @unique
+}
+
 model User {
   id             String              @id @default(uuid())
   email          String              @unique
@@ -58,6 +64,7 @@ model User {
   user_verified  Boolean             @default(false)
 
   // Relations
+  refreshToken RefreshToken[]
   userInformation    UserInformation?
   ridesAsDriver      ConnectedRide[] @relation("DriverRides")
   ridesAsPassenger   ConnectedRide[] @relation("PassengerRides")

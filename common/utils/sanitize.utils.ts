@@ -1,4 +1,4 @@
-import * as sanitizeHtml from 'sanitize-html';
+import sanitizeHtml from 'sanitize-html';
 
 export function sanitizeContent(content: string): string {
     return sanitizeHtml(content, {

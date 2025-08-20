@@ -1,4 +1,4 @@
-import {Transform, TransformFnParams} from "@nestjs/class-transformer"
+import {Transform, TransformFnParams} from "class-transformer"
 import { sanitizeContent } from '../utils/sanitize.utils';
 
 export function Sanitize() {
