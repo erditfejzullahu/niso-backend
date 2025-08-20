@@ -7,6 +7,41 @@ export class UploadService {
         private readonly cloudinaryService: CloudinaryService
     ) {}
 
+    extractPublicIdFromUrl(url: string): string {
+        try {
+        // Remove the Cloudinary base URL and transformations
+        const urlObj = new URL(url);
+        const pathParts = urlObj.pathname.split('/');
+        
+        // Find the index after 'upload'
+        const uploadIndex = pathParts.indexOf('upload');
+        if (uploadIndex === -1) {
+            throw new Error('Invalid Cloudinary URL');
+        }
+        
+        // Get everything after 'upload' but skip the version (v1234567)
+        const relevantParts = pathParts.slice(uploadIndex + 1);
+        
+        // Remove version if present (starts with 'v' followed by digits)
+        if (relevantParts[0]?.startsWith('v') && /^v\d+$/.test(relevantParts[0])) {
+            relevantParts.shift(); // remove version
+        }
+        
+        // Join the remaining parts and remove file extension
+        let publicId = relevantParts.join('/');
+        
+        // Remove file extension
+        const lastDotIndex = publicId.lastIndexOf('.');
+        if (lastDotIndex !== -1) {
+            publicId = publicId.substring(0, lastDotIndex);
+        }
+        
+        return publicId;
+        } catch (error) {
+        throw new Error('Could not extract publicId from URL: ' + error.message);
+        }
+    }
+
     async uploadFile(file: Express.Multer.File, folder?: string) {
         try {
             const result = await this.cloudinaryService.uploadFile(file, folder);

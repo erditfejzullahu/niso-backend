@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import bcryptjs from "bcryptjs"
@@ -8,6 +8,7 @@ import { RegisterUserDto } from './dto/registerUser.dto';
 import { UploadService } from 'src/upload/upload.service';
 import { VerifyIdentityDto } from './dto/verifyIdentity.dto';
 import { UpdateUserInformationDto } from './dto/updateUser.dto';
+import { UpdatePasswordDto } from './dto/updatePassword.dto';
 @Injectable()
 export class AuthService {
     constructor(
@@ -73,10 +74,7 @@ export class AuthService {
             return {success: true}
         } catch (error) {
             console.error(error);
-            if(error.message === "Ky email vecse egziston."){
-                return {success: false, message: error.message}
-            }
-            return {success: false};
+            throw new InternalServerErrorException('Dicka shkoi gabim ne server!')
         }
     }
 
@@ -101,14 +99,14 @@ export class AuthService {
             
             const user = await this.prisma.user.findUnique({where: {id: userId}, include: {userInformation: true}});
             if(!user){
-                throw new BadRequestException('no user found');
+                throw new BadRequestException('Nuk u gjet ndonje perdorues.');
             }else if(user.userInformation){
-                throw new BadRequestException('already completed')
+                throw new BadRequestException('Ju vecse keni kompletuar procesin e verifikimit. Prisni per ndryshim te statusit')
             }else{
                 const selfiePhotoResult = await this.uploadService.uploadFile(files.selfie, `users/${user.email}/selfie`);
-                if(!selfiePhotoResult.success) throw new BadRequestException('selfie error');
+                if(!selfiePhotoResult.success) throw new BadRequestException('Gabim ne ngarkimin e fotos suaj selfie.');
                 const idCardsResult = await this.uploadService.uploadMultipleFiles(files.id_card, `users/${user.email}/idCards`);
-                if(idCardsResult.every(item => item.success) === false) throw new BadRequestException('id cards error');
+                if(idCardsResult.every(item => item.success) === false) throw new BadRequestException('Gabim ne ngarkimin e dokumentit tuaj.');
     
                 await this.prisma.userInformation.create({
                     data: {
@@ -124,11 +122,7 @@ export class AuthService {
             }
         } catch (error) {
             console.error(error);
-            if(error.message === "no user found") return {success: false, message: "Nuk u gjet ndonje perdorues."};
-            if(error.message === "already completd") return {success: false, message: "Ju vecse keni kompletuar procesin e verifikimit. Prisni per ndryshim te statusit"};
-            if(error.message === "selfie error") return {success: false, message: "Gabim ne ngarkimin e fotos suaj selfie."};
-            if(error.message === "id cards error") return {success: false, message: "Gabim ne ngarkimin e dokumentit tuaj."};
-            return {success: false};
+            throw new InternalServerErrorException('Dicka shkoi gabim ne server!')
         }
     }
 
@@ -136,12 +130,14 @@ export class AuthService {
         try {
             const user = await this.prisma.user.findUnique({where: {id: userId}});
             if(!user){
-                throw new BadRequestException('no user')
+                throw new BadRequestException('Nuk u gjet ndonje perdorues.')
             }else{
                 let userImage: string = user.image;
                 if(newImage){
+                    const publicId = this.uploadService.extractPublicIdFromUrl(userImage);
+
                     const newUserImage = await this.uploadService.uploadFile(newImage, `users/${user.email}`);
-                    if(!newUserImage.success) throw new BadRequestException('no upload');
+                    if(!newUserImage.success) throw new BadRequestException('Dicka shkoi gabim ne ngarkimin e fotos stuaj te profilit.');
                     userImage = newUserImage.data?.url
                 }
                 await this.prisma.user.update(
@@ -165,9 +161,29 @@ export class AuthService {
             return {success: true}
         } catch (error) {
             console.error(error);
-            if(error.message === "no user") return {success: false, message: "Nuk u gjet ndonje perdorues."};
-            if(error.message === "no upload") return {success: false, message: "Dicka shkoi gabim ne ngarkimin e fotos stuaj te profilit."};
-            return {success: false};
+            throw new InternalServerErrorException('Dicka shkoi gabim ne server!')
+        }
+    }
+
+    async updatePassword(userId: string, passwordDto: UpdatePasswordDto){
+        try {
+            const user = await this.prisma.user.findUnique({where: {id: userId}})
+            if(!user){
+                throw new BadRequestException("Nuk u gjet ndonje perdorues.")
+            }else{
+                if(passwordDto.password !== passwordDto.confirmPassword){
+                    throw new BadRequestException("Fjalekalimet tek fushat e kerkuara duhet te jene te njejta!")
+                }
+                const hashedPassword = await bcryptjs.hash(passwordDto.password, 10);
+                await this.prisma.user.update({
+                    where: {id: userId},
+                    data: {password: hashedPassword}
+                })
+                return {success: true};
+            }
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server!")
         }
     }
 }

@@ -1,8 +1,9 @@
 import { Transform, TransformFnParams } from "class-transformer"
-import {IsEmail, IsNumber, IsString, IsStrongPassword, Max, Min} from "class-validator"
+import {IsEmail, IsNotEmpty, IsNumber, IsString, IsStrongPassword, Max, Min} from "class-validator"
 import { sanitizeContent } from "common/utils/sanitize.utils"
 export class RegisterUserDto {
     @IsString()
+    @IsNotEmpty()
     @Transform(({value}: TransformFnParams) => sanitizeContent(value))
     fullName: string;
 

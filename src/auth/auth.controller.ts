@@ -11,6 +11,7 @@ import { Roles } from 'common/decorators/roles.decorator';
 import { Role, User } from '@prisma/client';
 import { VerifyIdentityDto } from './dto/verifyIdentity.dto';
 import { UpdateUserInformationDto } from './dto/updateUser.dto';
+import { UpdatePasswordDto } from './dto/updatePassword.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -23,7 +24,7 @@ export class AuthController {
     @Public()
     @Post('login')
     async loginUser(@Body() body: LoginUserDto, @Res({passthrough: true}) res: Response){
-        await this.authService.login(body.email, body.password, res)
+        return await this.authService.login(body.email, body.password, res)
     }
 
     @Public()
@@ -120,7 +121,15 @@ export class AuthController {
         newImage?: Express.Multer.File
     ){
         const user = req.user as User;
-        await this.authService.updateUserInformation(user.id, body, newImage)
+        return await this.authService.updateUserInformation(user.id, body, newImage)
     }
+
+    @Roles(Role.DRIVER, Role.PASSENGER)
+    @Patch('updatePassword/:id')
+    async updateUserPassword(@Req() req: Request, @Body() body: UpdatePasswordDto){
+        const user = req.user as User;
+        return await this.authService.updatePassword(user.id, body);
+    }
+    
 
 }
