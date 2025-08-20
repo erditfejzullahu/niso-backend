@@ -25,6 +25,6 @@ export class RegisterUserDto {
         minSymbols: 1,
     })
     password: string;
-
+    
 
 }

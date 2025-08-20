@@ -12,9 +12,9 @@ import { UpdatePasswordDto } from './dto/updatePassword.dto';
 @Injectable()
 export class AuthService {
     constructor(
-        private prisma: PrismaService,
-        private jwtService: JwtService,
-        private uploadService: UploadService
+        private readonly prisma: PrismaService,
+        private readonly jwtService: JwtService,
+        private readonly uploadService: UploadService
     ) {}
 
     async login(email: string, password: string, res: Response) {

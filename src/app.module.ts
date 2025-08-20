@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { UsersModule } from './users/users.module';
 import { RideModule } from './rides/rides.module';
 import { DriversModule } from './drivers/drivers.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -14,7 +13,7 @@ import { UploadService } from './upload/upload.service';
 import { UploadModule } from './upload/upload.module';
 
 @Module({
-  imports: [UsersModule,
+  imports: [
     RideModule, 
     DriversModule, 
     PrismaModule, 

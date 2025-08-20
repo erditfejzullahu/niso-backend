@@ -16,9 +16,7 @@ import { UpdatePasswordDto } from './dto/updatePassword.dto';
 @Controller('auth')
 export class AuthController {
     constructor(
-        private prisma: PrismaService,
-        private authService: AuthService,
-        private uploadService: UploadService
+        private readonly authService: AuthService,
     ){}
 
     @Public()
@@ -103,7 +101,7 @@ export class AuthController {
     }
 
     @Roles(Role.DRIVER, Role.PASSENGER)
-    @Patch('updateUserInformation/:id')
+    @Patch('updateUserInformation')
     @UseInterceptors(FileInterceptor('profileImage'))
     async updateUserInformation(
         @Req() req: Request,
@@ -125,7 +123,7 @@ export class AuthController {
     }
 
     @Roles(Role.DRIVER, Role.PASSENGER)
-    @Patch('updatePassword/:id')
+    @Patch('updatePassword')
     async updateUserPassword(@Req() req: Request, @Body() body: UpdatePasswordDto){
         const user = req.user as User;
         return await this.authService.updatePassword(user.id, body);
