@@ -120,6 +120,11 @@ model User {
   acceptedRequests   RideRequest[]   @relation("DriverAcceptedRequests")
   preferredDrivers   PreferredDriver[] @relation("PassengerToDriver")
   preferredByUsers   PreferredDriver[] @relation("DriverToPassenger")
+
+  driverConversations Conversations[] @relation("driverConversations")
+  passengerConversations Conversations[] @relation("passengerConversations")
+  sendedMessages Message[]
+
   rotations          PassengerRotation[]
   notifications      Notification[]
   driverEarnings     DriverEarning[]
@@ -170,6 +175,7 @@ model RideRequest {
   toAddress     String
   status        RideRequestStatus @default(WAITING)
   connectedRide ConnectedRide?
+  rideRequestConversation Conversations?
 
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
@@ -283,4 +289,59 @@ model PreferredDriver {
   updatedAt   DateTime @updatedAt
 
   @@unique([driverId, passengerId])
+}
+
+model Conversations {
+  id String @id @default(uuid())
+  driver User @relation(fields: [driverId], references: [id], name: "driverConversations")
+  driverId String
+
+  passenger User @relation(fields: [passengerId], references: [id], name: "passengerConversations")
+  passengerId String
+
+  rideRequest RideRequest? @relation(fields: [rideRequestId], references: [id])
+  rideRequestId String? @unique
+
+  type ConversationType @default(RIDE_RELATED)
+
+  subject String?
+  isResolved Boolean @default(false)
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastMessageAt DateTime?
+
+  @@unique([driverId, passengerId, rideRequestId])
+  @@index([driverId])
+  @@index([passengerId])
+  @@index([type])
+  @@index([isResolved])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id String @id @default(uuid())
+  conversation Conversations @relation(fields: [conversationId], references: [id])
+  conversationId String
+
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId String
+  senderRole Role
+  content String
+  mediaUrls String[]
+  isRead Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@index([isRead])
+}
+
+enum ConversationType {
+  RIDE_RELATED
+  SUPPORT
+  OTHER
 }
