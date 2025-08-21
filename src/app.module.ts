@@ -11,6 +11,9 @@ import { JwtAuth } from 'common/guards/jwt.guard';
 import { RolesGuard } from 'common/guards/roles.guards';
 import { UploadService } from './upload/upload.service';
 import { UploadModule } from './upload/upload.module';
+import { ConversationsService } from './conversations/conversations.service';
+import { ConversationsController } from './conversations/conversations.controller';
+import { ConversationsModule } from './conversations/conversations.module';
 
 @Module({
   imports: [
@@ -19,9 +22,10 @@ import { UploadModule } from './upload/upload.module';
     PrismaModule, 
     AuthModule,
     ConfigModule.forRoot({envFilePath: '.env', isGlobal: true}),
-    UploadModule
+    UploadModule,
+    ConversationsModule
   ],
-  controllers: [AppController],
-  providers: [AppService, {provide: APP_GUARD, useClass: JwtAuth}, {provide: APP_GUARD, useClass: RolesGuard}, UploadService],
+  controllers: [AppController, ConversationsController],
+  providers: [AppService, {provide: APP_GUARD, useClass: JwtAuth}, {provide: APP_GUARD, useClass: RolesGuard}, UploadService, ConversationsService],
 })
 export class AppModule {}

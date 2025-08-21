@@ -299,7 +299,7 @@ model Conversations {
   passenger User @relation(fields: [passengerId], references: [id], name: "passengerConversations")
   passengerId String
 
-  rideRequest RideRequest? @relation(fields: [rideRequestId], references: [id])
+  rideRequest RideRequest? @relation(fields: [rideRequestId], references: [id], onDelete: SetNull)
   rideRequestId String? @unique
 
   type ConversationType @default(RIDE_RELATED)
@@ -318,6 +318,7 @@ model Conversations {
   @@index([type])
   @@index([isResolved])
   @@index([lastMessageAt])
+  @@index([driverId, isResolved])
 }
 
 model Message {
