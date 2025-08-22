@@ -1,6 +1,11 @@
 import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateNewRideRequestDto } from './dto/createRide.dto';
+import { Conversations, Message, RideRequest } from '@prisma/client';
+
+interface MessageInterface extends Message {
+    conversation: Conversations & {rideRequest?: RideRequest | null}
+}
 
 @Injectable()
 export class RideService {
@@ -31,24 +36,37 @@ export class RideService {
     }
 
     //kur ka ardh offer nga shoferi per udhetim.
-    //mund te kete derguar nje qmim tjter apo thjesht kerkese per me tdergu ne qat destinacion.
     async connectRideRequestByPassenger(passengerId: string, messageId: string){
         try {
             const user = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}});
             if(!user) throw new NotFoundException("Nuk u gjet ndonje perdorues.");
-            const message = await this.prisma.message.findUnique(
-                {
-                    where: {id: messageId},
-                    include: {
-                        conversation: {
-                            include: {rideRequest: true}
-                        }
-                    },
-                });
+            const messages = await this.prisma.message.findMany(
+            {
+                where: {id: messageId},
+                include: {
+                    conversation: {
+                        include: {rideRequest: true}
+                    }
+                },
+            });
+            
+            if(!messages || messages.length === 0) throw new NotFoundException("Nuk u gjeten bisedat.");
+            let message: MessageInterface | null = null;
+            let findMessageIndex: number = -1;
 
-            if(!message) throw new NotFoundException("Nuk u gjet biseda.");
-            if(!message.conversation.rideRequest || !message.conversation.rideRequestId) throw new ForbiddenException("Nuk u gjet ndonje kerkese e udhetimit.");
-
+            // Find both the message and its index in one loop
+            for (let i = 0; i < messages.length; i++) {
+                if (messages[i].id === messageId) {
+                    message = messages[i];
+                    findMessageIndex = i;
+                    break; // Exit loop early once found
+                }
+            }
+            if (!message) throw new NotFoundException("Nuk u gjet biseda.");
+            // Check if it's NOT the last message
+            if (findMessageIndex !== messages.length - 1) throw new ForbiddenException("Nuk eshte oferta e fundit.");
+            
+            if(!message.conversation.rideRequest || !message.conversation.rideRequestId || message.conversation.isResolved) throw new ForbiddenException("Nuk u gjet ndonje kerkese e udhetimit.");
 
             await this.prisma.$transaction(async (prisma) => {
                 const connectedRide = await prisma.connectedRide.create({
@@ -105,14 +123,14 @@ export class RideService {
         }
     }
 
-    //kur ka ardh offer nga passagjeri per ndryshim cmimi.
+    //kur ka ardh offer nga passagjeri per ndryshim cmimi edhe shoferi e pranon.
     async connectRideRequestByDriver(driverId: string, messageId: string){
         const driver = await this.prisma.user.findUnique({
             where: {id: driverId},
             select: {id: true}
         })
         if(!driver) throw new NotFoundException("Nuk u gjet ndonje shofer.");
-        const message = await this.prisma.message.findUnique({
+        const messages = await this.prisma.message.findMany({
             where: {id: messageId},
             include: {
                 conversation: {
@@ -120,7 +138,23 @@ export class RideService {
                 }
             }
         })
-        if(!message) throw new NotFoundException("Nuk u gjet biseda.");
+        
+        if(!messages || messages.length === 0) throw new NotFoundException("Nuk u gjeten bisedat.");
+        let message: MessageInterface | null = null;
+        let findMessageIndex: number = -1;
+
+        // Find both the message and its index in one loop
+        for (let i = 0; i < messages.length; i++) {
+            if (messages[i].id === messageId) {
+                message = messages[i];
+                findMessageIndex = i;
+                break; // Exit loop early once found
+            }
+        }
+        if (!message) throw new NotFoundException("Nuk u gjet biseda.");
+        // Check if it's NOT the last message
+        if (findMessageIndex !== messages.length - 1) throw new ForbiddenException("Nuk eshte oferta e fundit.");
+
         if(!message.conversation.rideRequest || !message.conversation.rideRequestId) throw new ForbiddenException("Nuk u gjet ndonje kerkese e udhetimit.");
 
         await this.prisma.$transaction(async (prisma) => {
@@ -170,6 +204,13 @@ export class RideService {
 
         return {success: true};
     }
+
+    //passagjeri 
+    async 
+
+
+
+
 
     private getRidePrices(ridePrice: number) {
         const paymentFee = 0.00; //bank fee or similar

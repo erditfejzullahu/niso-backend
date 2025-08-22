@@ -305,7 +305,7 @@ model Conversations {
   type ConversationType @default(RIDE_RELATED)
 
   subject String?
-  isResolved Boolean @default(false)
+  isResolved Boolean @default(false) //false eshte kur conversation osht aktiv, true kur u kry conversation
   messages Message[]
 
   createdAt DateTime @default(now())
