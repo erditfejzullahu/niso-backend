@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundE
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateNewRideRequestDto } from './dto/createRide.dto';
 import { Conversations, Message, RideRequest } from '@prisma/client';
+import { SendPriceOfferDto } from './dto/sendPriceOffer.dto';
 
 interface MessageInterface extends Message {
     conversation: Conversations & {rideRequest?: RideRequest | null}
@@ -35,14 +36,21 @@ export class RideService {
         }
     }
 
-    //kur ka ardh offer nga shoferi per udhetim.
-    async connectRideRequestByPassenger(passengerId: string, messageId: string){
+    //kur ka ardh offer nga shoferi per udhetim me qat qmim aktual qe passagjeri e ka qit.
+    //dmth klikohet butoni prano nga pasagjeri
+    async connectRideRequestByPassenger(passengerId: string, driverId: string, messageId: string){
         try {
             const user = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}});
             if(!user) throw new NotFoundException("Nuk u gjet ndonje perdorues.");
             const messages = await this.prisma.message.findMany(
             {
-                where: {id: messageId},
+                where: {
+                    AND: [
+                        {id: messageId},
+                        {conversation: {driverId}},
+                        {conversation: {passengerId}}
+                    ]
+                },
                 include: {
                     conversation: {
                         include: {rideRequest: true}
@@ -123,15 +131,22 @@ export class RideService {
         }
     }
 
-    //kur ka ardh offer nga passagjeri per ndryshim cmimi edhe shoferi e pranon.
-    async connectRideRequestByDriver(driverId: string, messageId: string){
+    //kur ka ardh offer nga passagjeri per ndryshim cmimi pasi qe pasagjeri ka ofru ndryshim ne qmim edhe shoferi e pranon.
+    //dmth klikohet butoni prano nga shoferi
+    async connectRideRequestByDriver(driverId: string, passengerId: string, messageId: string){
         const driver = await this.prisma.user.findUnique({
             where: {id: driverId},
             select: {id: true}
         })
         if(!driver) throw new NotFoundException("Nuk u gjet ndonje shofer.");
         const messages = await this.prisma.message.findMany({
-            where: {id: messageId},
+            where: {
+                AND: [
+                    {id: messageId},
+                    {conversation: {driverId}},
+                    {conversation: {passengerId}}
+                ]
+            },
             include: {
                 conversation: {
                     include: {rideRequest: true}
@@ -205,9 +220,79 @@ export class RideService {
         return {success: true};
     }
 
-    //passagjeri 
-    async 
 
+    //negociata te qmimit
+
+    //passagjeri dergon oferten e qmimit te tij per me kundershtu qmimin e shoferit(qe shoferi e ka dergu me kundershtu qmimin e pasagjerit)
+    async sendPriceOfferFromPassengerToDriver(offerDto: SendPriceOfferDto){
+        try {
+            const passenger = await this.prisma.user.findUnique({where: {id: offerDto.passengerId}, select: {id: true, role: true}});
+            if(!passenger) throw new NotFoundException("Nuk u gjet pasagjeri.");
+            
+            const conversation = await this.prisma.conversations.findFirst({
+                where: {
+                    AND: [
+                        {id: offerDto.conversationId},
+                        {passengerId: offerDto.passengerId},
+                        {driverId: offerDto.driverId}
+                    ]
+                },
+                include: {rideRequest: true}
+            });
+            if(!conversation) throw new NotFoundException("Biseda nuk u gjet.");
+            const newOfferMessage = await this.prisma.message.create({
+                data: {
+                    conversationId: conversation.id,
+                    senderId: passenger.id,
+                    senderRole: passenger.role,
+                    content: offerDto.content ?? "Oferte e re.",
+                    priceOffer: offerDto.priceOffer,
+                    isRead: false
+                }
+            })
+            //logic to notify the driver realtime
+            return {success: true};
+
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
+        }
+    }
+
+    //shoferi dergon oferten e qmimit te tij per me kundershtu qmimin e pasagjerit(qe pasagjeri e ka dergu me kundershtu qmimin e pasagjerit, ose qmimin fillestar te udhetimit)
+    async sendPriceOfferFromDriverToPassenger(offerDto: SendPriceOfferDto){
+        try {
+            const driver = await this.prisma.user.findUnique({where: {id: offerDto.driverId}, select: {id: true, role: true}});
+            if(!driver) throw new NotFoundException("Nuk u gjet pasagjeri.");
+
+            const conversation = await this.prisma.conversations.findFirst({
+                where: {
+                    AND: [
+                        {id: offerDto.conversationId},
+                        {passengerId: offerDto.passengerId},
+                        {driverId: offerDto.driverId}
+                    ]
+                },
+                include: {rideRequest: true}
+            });
+            if(!conversation) throw new NotFoundException("Biseda nuk u gjet.");
+            const newOfferMessage = await this.prisma.message.create({
+                data: {
+                    conversationId: conversation.id,
+                    senderId: driver.id,
+                    senderRole: driver.role,
+                    content: offerDto.content ?? "Oferte e re.",
+                    priceOffer: offerDto.priceOffer,
+                    isRead: false
+                }
+            })
+            //logic to notify the driver realtime
+            return {success: true};
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
 
 
 
