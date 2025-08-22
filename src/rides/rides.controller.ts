@@ -1,4 +1,54 @@
-import { Controller } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Post, Req } from '@nestjs/common';
+import { Role, User } from '@prisma/client';
+import { Roles } from 'common/decorators/roles.decorator';
+import type { Request } from 'express';
+import { CreateNewRideRequestDto } from './dto/createRide.dto';
+import { RideService } from './rides.service';
+import { ConnectRideRequestDto } from './dto/connectRideRequest.dto';
+import { SendPriceOfferDto } from './dto/sendPriceOffer.dto';
 
 @Controller('rides')
-export class RideController {}
+export class RideController {
+    constructor(
+        private readonly rideService: RideService
+    ){}
+
+    @Roles(Role.PASSENGER)
+    @Post('passenger-create-riderequest')
+    async createNewRideRequestByPassenger(@Req() req: Request, @Body() body: CreateNewRideRequestDto){
+        const user = req.user as User;
+        return await this.rideService.createNewRideRequestByPassenger(user.id, body);
+    }
+
+    @Roles(Role.PASSENGER)
+    @Post('connect-riderequest-passenger')
+    async connectRideRequestByPassenger(@Req() req: Request, @Body() body: ConnectRideRequestDto){
+        const user = req.user as User;
+        if(user.id !== body.passengerId) throw new ForbiddenException("Ju nuk jeni te lejuar per kete veprim.");
+        return await this.rideService.connectRideRequestByPassenger(body);
+    }
+
+    @Roles(Role.DRIVER)
+    @Post('connect-riderequest-driver')
+    async connectRideRequestByDriver(@Req() req: Request, @Body() body: ConnectRideRequestDto){
+        const user = req.user as User;
+        if(user.id !== body.driverId) throw new ForbiddenException("Ju nuk jeni te lejuar per kete veprim.");
+        return await this.rideService.connectRideRequestByDriver(body);
+    }
+
+    @Roles(Role.PASSENGER)
+    @Post('send-negotiate-price-passenger')
+    async sendPriceOfferFromPassengerToDriver(@Req() req: Request, @Body() body: SendPriceOfferDto){
+        const user = req.user as User;
+        if(user.id !== body.passengerId) throw new ForbiddenException("Ju nuk jeni te lejuar per kete veprim.");
+        return await this.rideService.sendPriceOfferFromPassengerToDriver(body);
+    }
+
+    @Roles(Role.DRIVER)
+    @Post('send-negotiate-price-driver')
+    async sendPriceOfferFromDriverToPassenger(@Req() req: Request, @Body() body: SendPriceOfferDto){
+        const user = req.user as User;
+        if(user.id !== body.driverId) throw new ForbiddenException("Ju nuk jeni te lejuar per kete veprim.");
+        return await this.rideService.sendPriceOfferFromDriverToPassenger(body);
+    }
+}

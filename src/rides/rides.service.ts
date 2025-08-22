@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateNewRideRequestDto } from './dto/createRide.dto';
 import { Conversations, Message, RideRequest } from '@prisma/client';
 import { SendPriceOfferDto } from './dto/sendPriceOffer.dto';
+import { ConnectRideRequestDto } from './dto/connectRideRequest.dto';
 
 interface MessageInterface extends Message {
     conversation: Conversations & {rideRequest?: RideRequest | null}
@@ -38,17 +39,17 @@ export class RideService {
 
     //kur ka ardh offer nga shoferi per udhetim me qat qmim aktual qe passagjeri e ka qit.
     //dmth klikohet butoni prano nga pasagjeri
-    async connectRideRequestByPassenger(passengerId: string, driverId: string, messageId: string){
+    async connectRideRequestByPassenger(rideDto: ConnectRideRequestDto){
         try {
-            const user = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}});
+            const user = await this.prisma.user.findUnique({where: {id: rideDto.passengerId}, select: {id: true}});
             if(!user) throw new NotFoundException("Nuk u gjet ndonje perdorues.");
             const messages = await this.prisma.message.findMany(
             {
                 where: {
                     AND: [
-                        {id: messageId},
-                        {conversation: {driverId}},
-                        {conversation: {passengerId}}
+                        {id: rideDto.messageId},
+                        {conversation: {driverId: rideDto.driverId}},
+                        {conversation: {passengerId: rideDto.passengerId}}
                     ]
                 },
                 include: {
@@ -64,7 +65,7 @@ export class RideService {
 
             // Find both the message and its index in one loop
             for (let i = 0; i < messages.length; i++) {
-                if (messages[i].id === messageId) {
+                if (messages[i].id === rideDto.messageId) {
                     message = messages[i];
                     findMessageIndex = i;
                     break; // Exit loop early once found
@@ -133,18 +134,18 @@ export class RideService {
 
     //kur ka ardh offer nga passagjeri per ndryshim cmimi pasi qe pasagjeri ka ofru ndryshim ne qmim edhe shoferi e pranon.
     //dmth klikohet butoni prano nga shoferi
-    async connectRideRequestByDriver(driverId: string, passengerId: string, messageId: string){
+    async connectRideRequestByDriver(rideDto: ConnectRideRequestDto){
         const driver = await this.prisma.user.findUnique({
-            where: {id: driverId},
+            where: {id: rideDto.driverId},
             select: {id: true}
         })
         if(!driver) throw new NotFoundException("Nuk u gjet ndonje shofer.");
         const messages = await this.prisma.message.findMany({
             where: {
                 AND: [
-                    {id: messageId},
-                    {conversation: {driverId}},
-                    {conversation: {passengerId}}
+                    {id: rideDto.messageId},
+                    {conversation: {driverId: rideDto.driverId}},
+                    {conversation: {passengerId: rideDto.passengerId}}
                 ]
             },
             include: {
@@ -160,7 +161,7 @@ export class RideService {
 
         // Find both the message and its index in one loop
         for (let i = 0; i < messages.length; i++) {
-            if (messages[i].id === messageId) {
+            if (messages[i].id === rideDto.messageId) {
                 message = messages[i];
                 findMessageIndex = i;
                 break; // Exit loop early once found
