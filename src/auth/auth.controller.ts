@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, FileTypeValidator, MaxFileSizeValidator, ParseFilePipe, Patch, Post, Req, Res, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, FileTypeValidator, Get, MaxFileSizeValidator, ParseFilePipe, Patch, Post, Req, Res, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginUserDto } from './dto/loginUser.dto';
 import type { Response, Request } from 'express';
@@ -127,6 +127,13 @@ export class AuthController {
     async updateUserPassword(@Req() req: Request, @Body() body: UpdatePasswordDto){
         const user = req.user as User;
         return await this.authService.updatePassword(user.id, body);
+    }
+
+    @Roles(Role.DRIVER, Role.PASSENGER)
+    @Get('update-session')
+    async updateSession(@Req() req: Request, @Res({passthrough: true}) res: Response){
+        const user = req.user as User;
+        return await this.authService.updateSession(user.id, res);
     }
     
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import bcryptjs from "bcryptjs"
@@ -16,6 +16,31 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly uploadService: UploadService
     ) {}
+
+    async updateSession(userId: string, res: Response){
+        const user = await this.prisma.user.findUnique({where: {id: userId}});
+        if(!user) throw new NotFoundException("Nuk u gjet perdoruesi.");
+        const {accessToken, refreshToken} = await this.getTokens(user);
+
+        const isProduction = process.env.NODE_ENV === "production";
+
+        res.cookie('access_token', accessToken, {
+            httpOnly: true,
+            secure: isProduction, //true in production
+            sameSite: 'lax',
+            // domain: isProduction ? ''
+            maxAge: 1000 * 60 * 60
+        })
+
+        res.cookie('refresh_token', refreshToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: "lax",
+            // domain: isProduction ? '.nejatnkosov.com' : undefined,
+            maxAge: 1000 * 60 * 60 * 24 * 7
+        })
+        return {success: true};
+    }
 
     async login(email: string, password: string, res: Response) {
         const user = await this.prisma.user.findUnique({where: {email}});
