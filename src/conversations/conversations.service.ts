@@ -60,34 +60,7 @@ export class ConversationsService {
         }
     }
 
-    //psh kur e ka kry udhetimin/biseden me to e kerkon me bo bised prap.
-    //arsye i ka hup diqka nkerr ose diqka e till ose veq kontakt hajt.
-    //kjo duhet me kan nsocket qe me marr shoferi lajmin realtime.
-    //osht tu u perdor ne conversation gateway
-    async contactDriverForDifferentReasonSocket(passengerId: string, conversationId: string){ 
-        try {
-            const passenger = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}})
-            if(!passenger) throw new NotFoundException("Pasagjeri nuk u gjet.");
-
-            const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {id: true, passengerId: true, driverId: true}});
-            if(!conversation) throw new NotFoundException("Nuk u gjet ndonje bisede.");
-            if(conversation.passengerId !== passenger.id) throw new ForbiddenException("Ju nuk keni te drejte per te kryer kete veprim.");
-
-            await this.prisma.conversations.update({
-                where: {id: conversation.id},
-                data: {
-                    isResolved: false
-                }
-            })
-
-            return {driverId: conversation.driverId};
-
-            //TODO: inform driver about this change implementation
-        } catch (error) {
-            console.error(error);
-            return {driverId: null};
-        }
-    };
+    
 
     //a lejohet shoferi mu kyc nbised me passagjerin me mesazhe, nese po shfaqi mesazhet.
     async getIntoConversationWithPassenger(driverId: string, conversationId: string){
@@ -293,4 +266,38 @@ export class ConversationsService {
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
         }
     }
+
+
+
+
+
+    //psh kur e ka kry udhetimin/biseden me to e kerkon me bo bised prap.
+    //arsye i ka hup diqka nkerr ose diqka e till ose veq kontakt hajt.
+    //kjo duhet me kan nsocket qe me marr shoferi lajmin realtime.
+    //osht tu u perdor ne conversation gateway
+    async contactDriverForDifferentReason(passengerId: string, conversationId: string){ 
+        try {
+            const passenger = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}})
+            if(!passenger) throw new NotFoundException("Pasagjeri nuk u gjet.");
+
+            const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {id: true, passengerId: true, driverId: true}});
+            if(!conversation) throw new NotFoundException("Nuk u gjet ndonje bisede.");
+            if(conversation.passengerId !== passenger.id) throw new ForbiddenException("Ju nuk keni te drejte per te kryer kete veprim.");
+
+            await this.prisma.conversations.update({
+                where: {id: conversation.id},
+                data: {
+                    isResolved: false
+                }
+            })
+
+            //inform driver if its available.
+            await this.conversationGateway.contactDriverForDifferentReason(conversation.driverId);
+            return {success: true};
+
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim.")
+        }
+    };
 }

@@ -32,6 +32,7 @@ export class ConversationsController {
         return await this.conversationsService.finishConversationByPassenger(user.id, rideRequestId);
     }
 
+    //only if conversation exists
     @Roles(Role.PASSENGER)
     @Patch('contact-driver-other/:id')
     async contactDriverForDifferentReason(@Req() req: Request, @Param("id") conversationId: string){

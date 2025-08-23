@@ -150,13 +150,10 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
     //contactDriverForDifferentReason helper function
     //for lost items, chatting or smth
     //driver listens to contactedDriverOtherReson
-    public async contactDriverForDifferentReason(passengerId: string, conversationId: string){
-        const getDriverId = await this.conversationService.contactDriverForDifferentReasonSocket(passengerId, conversationId);
-        if(getDriverId.driverId){
-            const targetDriverIdSocket = this.userSocket.get(getDriverId.driverId);
-            if(targetDriverIdSocket){
-                this.server.to(targetDriverIdSocket).emit('contactedDriverOtherReason', {success: true});
-            }
+    public async contactDriverForDifferentReason(driverId: string){
+        const targetDriverIdSocket = this.userSocket.get(driverId);
+        if(targetDriverIdSocket){
+            this.server.to(targetDriverIdSocket).emit('contactedDriverOtherReason', {success: true});
         }
     }
 
