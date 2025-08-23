@@ -44,7 +44,10 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
             const payload: any = await this.jwtService.verifyAsync(token);
             const userId = String(payload.sub);
             const role = String(payload.role);
-            (client as any).user = {id: userId, role: role};
+            const image = String(payload.image);
+            const fullName = String(payload.fullName);
+
+            (client as any).user = {id: userId, role: role, image: image, fullName: fullName};
 
             //enforce singje-device, if previous socket exists, drop it
             const prev = this.userSocket.get(userId);
@@ -81,6 +84,9 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
     ){
         const senderId = (client as any).user.id as string;
         const senderRole = (client as any).user.role as string;
+        const senderImage = (client as any).user.image as string;
+        const senderFullname = (client as any).user.fullName as string;
+
         const allowance = await this.conversationService.checkConversationAllowanceAndType(dto.driverId, dto.passengerId, dto.conversationId);
         if(allowance){
 
@@ -93,27 +99,73 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
                 mediaReceived = (await mediaResults).map(item => item.data?.uri);
             }
 
-            const message = await this.prisma.message.create({
-                data: {
+            
+            
+            const targetSocketReceiverId = this.userSocket.get(receiverId);
+            if(targetSocketReceiverId){
+                const message = await this.prisma.message.create({
+                    data: {
+                        conversationId: dto.conversationId,
+                        senderId,
+                        senderRole: senderRole as Role,
+                        content: dto.content,
+                        isRead: true,
+                        mediaUrls: mediaReceived,
+                    },
+                })
+                this.server.to(targetSocketReceiverId).emit('newMessage', message)
+
+                this.server.to(targetSocketReceiverId).emit('conversationAlert', {
                     conversationId: dto.conversationId,
                     senderId,
-                    senderRole: senderRole as Role,
-                    content: dto.content,
-                    mediaUrls: mediaReceived,
-                },
-            })
-            
-            const targetSocketId = this.userSocket.get(receiverId);
-            if(targetSocketId){
-                this.server.to(targetSocketId).emit('newMessage', message)
-                await this.prisma.conversations.update({where: {id: dto.conversationId}, data: {lastMessageAt: new Date()}});
+                    preview: dto.content.substring(0,50),
+                    sentAt: message.createdAt,
+                    senderImage,
+                    senderFullname
+                })
+            }else{
+                await this.prisma.message.create({
+                    data: {
+                        conversationId: dto.conversationId,
+                        senderId,
+                        senderRole: senderRole as Role,
+                        content: dto.content,
+                        isRead: false,
+                        mediaUrls: mediaReceived,
+                    },
+                })
             }
+            await this.prisma.conversations.update({where: {id: dto.conversationId}, data: {lastMessageAt: new Date()}});
 
-            return message;
+            // return message;
         }else{
-            //emit error to user via socket.
+            const targetSocketSenderId = this.userSocket.get(senderId);
+            if(targetSocketSenderId){
+                this.server.to(targetSocketSenderId).emit('errorSendingMessage', {success: false});
+                //emit error to user via socket.
+            }
         }
     }
 
-    //contactDriverForDifferentReadon helper function
+    //contactDriverForDifferentReason helper function
+    //for lost items, chatting or smth
+    //driver listens to contactedDriverOtherReson
+    public async contactDriverForDifferentReason(passengerId: string, conversationId: string){
+        const getDriverId = await this.conversationService.contactDriverForDifferentReasonSocket(passengerId, conversationId);
+        if(getDriverId.driverId){
+            const targetDriverIdSocket = this.userSocket.get(getDriverId.driverId);
+            if(targetDriverIdSocket){
+                this.server.to(targetDriverIdSocket).emit('contactedDriverOtherReason', {success: true});
+            }
+        }
+    }
+
+    //make read messages to user that sended messages that u didnt read.
+    public async makeReadMessagesCallFromService(userId: string){
+        const targetUserIdSocket = this.userSocket.get(userId);
+        if(targetUserIdSocket){
+            this.server.to(targetUserIdSocket).emit('makeReadMessages', {success: true});
+        }
+    }
+
 }

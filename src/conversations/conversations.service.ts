@@ -1,10 +1,12 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ConversationsGateway } from './conversations.gateway';
 
 @Injectable()
 export class ConversationsService {
     constructor(
-        private readonly prisma: PrismaService
+        private readonly prisma: PrismaService,
+        private readonly conversationGateway: ConversationsGateway
     ){}
 
     // kur osht kry udhetimi e bahet finish prej shoferit ose najqysh me lokacion.
@@ -61,12 +63,13 @@ export class ConversationsService {
     //psh kur e ka kry udhetimin/biseden me to e kerkon me bo bised prap.
     //arsye i ka hup diqka nkerr ose diqka e till ose veq kontakt hajt.
     //kjo duhet me kan nsocket qe me marr shoferi lajmin realtime.
-    async contactDriverForDifferentReason(passengerId: string, conversationId: string){ 
+    //osht tu u perdor ne conversation gateway
+    async contactDriverForDifferentReasonSocket(passengerId: string, conversationId: string){ 
         try {
             const passenger = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}})
             if(!passenger) throw new NotFoundException("Pasagjeri nuk u gjet.");
 
-            const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {id: true, passengerId: true}});
+            const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {id: true, passengerId: true, driverId: true}});
             if(!conversation) throw new NotFoundException("Nuk u gjet ndonje bisede.");
             if(conversation.passengerId !== passenger.id) throw new ForbiddenException("Ju nuk keni te drejte per te kryer kete veprim.");
 
@@ -77,10 +80,12 @@ export class ConversationsService {
                 }
             })
 
+            return {driverId: conversation.driverId};
+
             //TODO: inform driver about this change implementation
         } catch (error) {
             console.error(error);
-            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+            return {driverId: null};
         }
     };
 
@@ -186,6 +191,7 @@ export class ConversationsService {
                     lastMessageAt: "desc"
                 }
             })
+
             return conversations;
         } catch (error) {
             console.error(error);
@@ -193,6 +199,7 @@ export class ConversationsService {
         }
     }
 
+    //merri krejt bisedat per me i shfaq te mesazhet e shfoerit.
     async getAllActiveConversationsByDriver(driverId: string){
         try {
             const conversations = await this.prisma.conversations.findMany({
@@ -235,6 +242,52 @@ export class ConversationsService {
                 }
             })
             return conversations;
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
+        }
+    }
+
+    //perdoruesi eshte kyc ne bised.
+    //check a jon te lejum dy part.
+    async getAllMessagesByConversationId(userId: string, conversationId: string){
+        try {
+            const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true, role: true}});
+            if(!user) throw new NotFoundException("Perdoruesi nuk u gjet.");
+
+            const conversationWithMessages = await this.prisma.conversations.findUnique({
+                where: {id: conversationId},
+                include: {messages: {
+                    orderBy: {
+                        createdAt: "desc",
+                    },
+                    take: 20 //implement pagination TODO:
+                }},
+            })
+
+            if(!conversationWithMessages){
+                throw new NotFoundException("Biseda nuk u gjet.");
+            }
+
+            if(conversationWithMessages.isResolved) throw new ForbiddenException("Biseda ka perfunduar.");
+
+            //mark other users messages as read
+            const whoSendedMessagesId = user.id === conversationWithMessages.driverId ? conversationWithMessages.passengerId : conversationWithMessages.driverId;
+            await this.prisma.message.updateMany({
+                where: {
+                    AND: [
+                        {conversationId},
+                        {senderId: whoSendedMessagesId}
+                    ]
+                },
+                data: {
+                    isRead: true
+                }
+            })
+
+            await this.conversationGateway.makeReadMessagesCallFromService(whoSendedMessagesId);
+
+            return conversationWithMessages;
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
