@@ -62,6 +62,23 @@ export class UploadService {
         }
     }
 
+    async uploadBase64File(base64String: string, folder?: string) {
+        try {
+            const result = await this.cloudinaryService.uploadBase64File(base64String, folder);
+            return {
+                success: true,
+                data: {
+                    uri: result.secure_url,
+                    publicId: result.public_id,
+                    format: result.format,
+                    bytes: result.bytes
+                }
+            }
+        } catch (error) {
+            return {success: false, message: error.message};
+        }
+    }
+
     async uploadFileFromPath(filePath: string, folder?: string){
         try {
             const result = await this.cloudinaryService.uploadFileFromPath(filePath, folder)

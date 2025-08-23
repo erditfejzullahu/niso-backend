@@ -14,11 +14,9 @@ import { UploadModule } from './upload/upload.module';
 import { ConversationsService } from './conversations/conversations.service';
 import { ConversationsController } from './conversations/conversations.controller';
 import { ConversationsModule } from './conversations/conversations.module';
-import { ChatSocketModule } from './socketModules/chat.module';
 
 @Module({
   imports: [
-    ChatSocketModule,
     RideModule, 
     DriversModule, 
     PrismaModule, 

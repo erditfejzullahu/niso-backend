@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
-import { SocketIoAdapter } from './adapters/socket-io.adapter';
+import { SocketIoAdapter } from './websockets/socket-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {cors: true});

@@ -9,18 +9,18 @@ export class SocketIoAdapter extends IoAdapter {
         super(app);
     }
 
-    create(port: number, options?: ServerOptions) {
-        const serverOptions: Partial<ServerOptions> = {
-            cors: {
-                origin: ['http://localhost:5173', 'http://localhost:3000'],
-                credentials: true,
-            },
-            path: '/socket.io',
-            serveClient: false,
-            ...options,
-        };
+    createIOServer(port: number, options?: ServerOptions) {
+        const cors = {
+            origin: ['http://localhost:5173', 'http://localhost:3000'],
+            credentials: true,
+        } as const;
 
-        const server = super.create(port, serverOptions as ServerOptions);
+
+        const server = super.createIOServer(port, {
+            ...(options ?? {}),
+            cors,
+            path: '/ws', // optional; change/omit if you like
+        });
         this.logger.log('Socket.IO server initialized');
         return server;
     }
