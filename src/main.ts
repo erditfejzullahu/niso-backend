@@ -3,9 +3,10 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { SocketIoAdapter } from './adapters/socket-io.adapter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {cors: true});
 
   // Middlewares
   app.use(cookieParser());
@@ -17,6 +18,8 @@ async function bootstrap() {
       enableImplicitConversion: true
     }
   }))
+  app.useWebSocketAdapter(new SocketIoAdapter(app));
+
   app.enableCors({
     origin: 'http://localhost:3000', // your frontend URL
     credentials: true,
