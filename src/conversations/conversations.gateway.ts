@@ -208,4 +208,18 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
         const targetPassengerId = this.userSocket.get(passengerId);
         if(targetPassengerId) this.server.to(targetPassengerId).emit('driverSendedPriceOffer', messageWithSender);
     }
+
+    //alert to users that new driver is in place based on city
+    public async newRegisteredDriverNotifyToPassengers(newDriver: User & {userInformation: UserInformation}){
+        const passengersByCity = await this.prisma.user.findMany({
+            where: {userInformation: {city: newDriver.userInformation.city}}
+        })
+
+        if(passengersByCity && passengersByCity.length > 0){
+            passengersByCity.forEach(item => {
+                const targetPassengerSocketId = this.userSocket.get(item.id);
+                if(targetPassengerSocketId) this.server.to(targetPassengerSocketId).emit('newDriverInTown', newDriver);
+            })
+        }
+    }
 }

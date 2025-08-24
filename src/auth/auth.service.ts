@@ -2,19 +2,21 @@ import { BadRequestException, Injectable, InternalServerErrorException, NotFound
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import bcryptjs from "bcryptjs"
-import { Gender, KosovoCity, User } from '@prisma/client';
+import { Gender, KosovoCity, User, UserInformation } from '@prisma/client';
 import { Response } from 'express';
 import { RegisterUserDto } from './dto/registerUser.dto';
 import { UploadService } from 'src/upload/upload.service';
 import { VerifyIdentityDto } from './dto/verifyIdentity.dto';
 import { UpdateUserInformationDto } from './dto/updateUser.dto';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
+import { ConversationsGateway } from 'src/conversations/conversations.gateway';
 @Injectable()
 export class AuthService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly jwtService: JwtService,
-        private readonly uploadService: UploadService
+        private readonly uploadService: UploadService,
+        private readonly conversationGateway: ConversationsGateway
     ) {}
 
     async updateSession(userId: string, res: Response){
@@ -86,7 +88,7 @@ export class AuthService {
             if(user) throw new UnauthorizedException('Ky email vecse egziston.');
             const hashedPassword = await bcryptjs.hash(registerDto.password, 10);
             const resultImage = await this.uploadService.uploadFile(file, `users/${registerDto.email}`);
-            await this.prisma.user.create({
+            const newUser = await this.prisma.user.create({
                 data: {
                     email: registerDto.email,
                     fullName: registerDto.fullName,
@@ -94,8 +96,17 @@ export class AuthService {
                     role: registerDto.role === 0 ? "DRIVER" : "PASSENGER",
                     password: hashedPassword,
                     image: resultImage.success ? resultImage.data?.url : ""
+                },
+                include: {
+                    userInformation: {
+                        select: {
+                            city: true
+                        }
+                    }
                 }
             })
+
+            this.conversationGateway.newRegisteredDriverNotifyToPassengers(newUser as User & {userInformation: UserInformation});
             return {success: true}
         } catch (error) {
             console.error(error);
