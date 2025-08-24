@@ -222,6 +222,8 @@ export class RideService {
             })
         })
 
+
+
         return {success: true};
     }
 
@@ -242,7 +244,8 @@ export class RideService {
                         {driverId: offerDto.driverId}
                     ]
                 },
-                include: {rideRequest: true}
+                include: {rideRequest: true,
+                },
             });
             if(!conversation) throw new NotFoundException("Biseda nuk u gjet.");
             const newOfferMessage = await this.prisma.message.create({
@@ -253,9 +256,19 @@ export class RideService {
                     content: offerDto.content ?? "Oferte e re.",
                     priceOffer: offerDto.priceOffer,
                     isRead: false
+                },
+                include: {
+                    sender: {
+                        select: {
+                            id: true,
+                            image: true,
+                            fullName: true
+                        }
+                    }
                 }
             })
             //logic to notify the driver realtime
+            this.conversationGateway.passengerSendsPriceOfferToDriverAlert(conversation.driverId, newOfferMessage as Message & {sender: User});
             return {success: true};
 
         } catch (error) {
@@ -289,9 +302,19 @@ export class RideService {
                     content: offerDto.content ?? "Oferte e re.",
                     priceOffer: offerDto.priceOffer,
                     isRead: false
+                },
+                include: {
+                    sender: {
+                        select: {
+                            id: true,
+                            image: true,
+                            fullName: true
+                        }
+                    }
                 }
             })
             //logic to notify the driver realtime
+            this.conversationGateway.driverSendsPriceOfferToPassengerAlert(conversation.passengerId, newOfferMessage as Message & {sender: User})
             return {success: true};
         } catch (error) {
             console.error(error);

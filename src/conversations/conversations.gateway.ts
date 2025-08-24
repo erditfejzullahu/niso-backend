@@ -8,7 +8,7 @@ import { ConversationsService } from "./conversations.service";
 import { JwtService } from "@nestjs/jwt";
 import { Socket } from "socket.io-client";
 import { SendOtherFreeMessageDto } from "./dto/SendOtherFreeMessage";
-import { RideRequest, Role, User, UserInformation } from "@prisma/client";
+import { Message, RideRequest, Role, User, UserInformation } from "@prisma/client";
 import { UploadService } from "src/upload/upload.service";
 
 @WebSocketGateway({
@@ -185,10 +185,27 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
         }
     }
 
-    //when passager accepted driver new price offer
+    //when passager accepted driver new price offer (connectRideRequestByPassenger)
     public passagerAcceptedDriverPriceOfferAlert(driverId: string){
         const targetDriverSocketId = this.userSocket.get(driverId);
-        if(targetDriverSocketId) this.server.to(targetDriverSocketId).emit('passengerAcceptedPriceOffer');
+        if(targetDriverSocketId) this.server.to(targetDriverSocketId).emit('passengerAcceptedPriceOffer', {success: true});
     }
 
+    //when driver accepted the passager counter offer (connectRideRequestByDriver)
+    public driverAcceptedPassengerPriceOfferAlert(passengerId: string){
+        const targetPassengerId = this.userSocket.get(passengerId)
+        if(targetPassengerId) this.server.to(targetPassengerId).emit('driverAcceptedPriceOffer', {success: true});
+    }
+
+    //when passenger sends counter price to driver(sendPriceOfferFromPassengerToDriver)
+    public passengerSendsPriceOfferToDriverAlert(driverId: string, messageWithSender: Message & {sender: User}){
+        const targetDriverId = this.userSocket.get(driverId);
+        if(targetDriverId) this.server.to(targetDriverId).emit('passengerSendedPriceOffer', messageWithSender);
+    }
+
+    //when driver sends counter price to passenger(sendPriceOfferFromDriverToPassenger)
+    public driverSendsPriceOfferToPassengerAlert(passengerId: string, messageWithSender: Message & {sender: User}){
+        const targetPassengerId = this.userSocket.get(passengerId);
+        if(targetPassengerId) this.server.to(targetPassengerId).emit('driverSendedPriceOffer', messageWithSender);
+    }
 }
