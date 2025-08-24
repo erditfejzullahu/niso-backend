@@ -245,10 +245,18 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
     }
 
     //driver manually finished ride(completeRideManuallyByDriver)
-    //shfaqet njoftimi mbi qa don me ba; e klikon shfaqet modali per vlersim e qisi.
-    public driverCompletedRideAlertToPassengerAlert(passengerId: string, driverId: string, connectedRideId: string){
+    //shfaqet njoftimi te pasagjeri mbi qa don me ba; e klikon shfaqet modali per vlersim e qisi.
+    public completedRideByDriverAlert(passengerId: string, driverId: string, connectedRideId: string){
         const targetPassengerSocketId = this.userSocket.get(passengerId);
         const sendObject = {passengerId, driverId, connectedRideId}
         if(targetPassengerSocketId) this.server.to(targetPassengerSocketId).emit('driverManuallyCompletedRide', sendObject)
+    }
+
+    //passenger manually finished ride(cancelRideManuallyByPassenger)
+    //shfaqet njoftimi te shoferi mbi qa don me ba; e klikon shfaqet modali per vlersim e qisi.
+    public cancelRideManuallyByPassengerAlert(driverId: string, passengerId: string, connectedRideId: string){
+        const targetDriverSocketId = this.userSocket.get(driverId);
+        const sendObject = {passengerId, driverId, connectedRideId};
+        if(targetDriverSocketId) this.server.to(targetDriverSocketId).emit('passengerManuallyCanceledRide', sendObject)
     }
 }

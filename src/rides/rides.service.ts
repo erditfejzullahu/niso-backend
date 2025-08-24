@@ -329,7 +329,7 @@ export class RideService {
     //complete ride by driver
     async completeRideManuallyByDriver(driverId: string, rideDto: FinishRideManuallyByDriverDto){
         try {
-            const driver = await this.prisma.user.findUnique({where:{id: driverId}});
+            const driver = await this.prisma.user.findUnique({where:{id: driverId}, select: {id: true}});
             if(!driver) throw new NotFoundException("Nuk u gjet shoferi.");
 
             const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: rideDto.connectedRideId}, include: {rideRequest: true}});
@@ -359,7 +359,7 @@ export class RideService {
                 })
             }
 
-            this.conversationGateway.driverCompletedRideAlertToPassengerAlert(connectedRide.passengerId, connectedRide.driverId, connectedRide.id)
+            this.conversationGateway.completedRideByDriverAlert(connectedRide.passengerId, connectedRide.driverId, connectedRide.id)
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
@@ -367,6 +367,29 @@ export class RideService {
     }
 
     //cancel ride by passenger
+    async cancelRideManuallyByPassenger(passengerId: string, connectedRideId: string){
+        try {
+            const passenger = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}})
+            if(!passenger) throw new NotFoundException("Nuk u gjet pasagjeri.");
+
+            const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: connectedRideId}, include: {rideRequest: true}});
+            if(!connectedRide) throw new NotFoundException("Nuk u gjet udhetimi.");
+            if(connectedRide.passengerId !== passenger.id) throw new ForbiddenException("Ju nuk jeni te lejuar per te kryer kete veprim.");
+
+            //logic to refund
+            await this.prisma.connectedRide.update({
+                where: {id: connectedRide.id},
+                data: {
+                    status: "CANCELLED_BY_PASSENGER"
+                }
+            })
+
+            this.conversationGateway.cancelRideManuallyByPassengerAlert(connectedRide.driverId, connectedRide.passengerId, connectedRide.id)
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
 
     private getRidePrices(ridePrice: number) {
         const paymentFee = 0.00; //bank fee or similar

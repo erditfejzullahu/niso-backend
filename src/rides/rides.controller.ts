@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Post, Req } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Param, Patch, Post, Req } from '@nestjs/common';
 import { Role, User } from '@prisma/client';
 import { Roles } from 'common/decorators/roles.decorator';
 import type { Request } from 'express';
@@ -6,6 +6,7 @@ import { CreateNewRideRequestDto } from './dto/createRide.dto';
 import { RideService } from './rides.service';
 import { ConnectRideRequestDto } from './dto/connectRideRequest.dto';
 import { SendPriceOfferDto } from './dto/sendPriceOffer.dto';
+import { FinishRideManuallyByDriverDto } from './dto/finishRideManuallyByDriver.dto';
 
 @Controller('rides')
 export class RideController {
@@ -50,5 +51,19 @@ export class RideController {
         const user = req.user as User;
         if(user.id !== body.driverId) throw new ForbiddenException("Ju nuk jeni te lejuar per kete veprim.");
         return await this.rideService.sendPriceOfferFromDriverToPassenger(body);
+    }
+
+    @Roles(Role.DRIVER)
+    @Patch('complete-ride-manually-driver')
+    async completeRideManuallyByDriver(@Req() req: Request, @Body() rideDto: FinishRideManuallyByDriverDto){
+        const user = req.user as User;
+        return await this.rideService.completeRideManuallyByDriver(user.id, rideDto)
+    }
+
+    @Roles(Role.PASSENGER)
+    @Patch('complete-ride-manually-passenger')
+    async completeRideManuallyByPassenger(@Req() req: Request, @Param('id') connectedRideId: string){
+        const user = req.user as User;
+        return await this.rideService.cancelRideManuallyByPassenger(user.id, connectedRideId);
     }
 }
