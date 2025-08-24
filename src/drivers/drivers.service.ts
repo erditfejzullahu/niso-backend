@@ -51,7 +51,7 @@ export class DriversService {
                 })
 
                 //alert passengers that driver created new tarif in town.
-                this.conversationGateway.newTarifCreatedByDriver(newTarif as DriverFixedTarifs & {user: User})
+                this.conversationGateway.newTarifCreatedByDriverAlert(newTarif as DriverFixedTarifs & {user: User})
 
                 return {success: true}
             }

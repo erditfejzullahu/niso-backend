@@ -210,7 +210,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
     }
 
     //alert to users that new driver is in place based on city(registerUser)
-    public async newRegisteredDriverNotifyToPassengers(newDriver: User & {userInformation: UserInformation}){
+    public async newRegisteredDriverNotifyToPassengersAlert(newDriver: User & {userInformation: UserInformation}){
         const passengersByCity = await this.prisma.user.findMany({
             where: {userInformation: {city: newDriver.userInformation.city}}
         })
@@ -224,7 +224,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
     }
 
     //alert passengers that driver has created new tarif in town(addFixedTarif)
-    public async newTarifCreatedByDriver(newTarif: DriverFixedTarifs & {user: User}){
+    public async newTarifCreatedByDriverAlert(newTarif: DriverFixedTarifs & {user: User}){
         const passengersByCity = await this.prisma.user.findMany({
             where: {userInformation: {city: newTarif.city}}
         })
@@ -235,5 +235,11 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
                 if(targetPassengerSocketId) this.server.to(targetPassengerSocketId).emit('newTarifInTown', newTarif);
             })
         }
+    }
+
+    //passenger finished conversation with driver(finishConversationByPassenger)
+    public passengerFinishedConversationAlert(passenger: Partial<User>, driverId: string){
+        const targetDriverSocketId = this.userSocket.get(driverId);
+        if(targetDriverSocketId) this.server.to(targetDriverSocketId).emit('passengerFinishedConversation', passenger)
     }
 }

@@ -106,7 +106,7 @@ export class AuthService {
                 }
             })
 
-            this.conversationGateway.newRegisteredDriverNotifyToPassengers(newUser as User & {userInformation: UserInformation});
+            this.conversationGateway.newRegisteredDriverNotifyToPassengersAlert(newUser as User & {userInformation: UserInformation});
             return {success: true}
         } catch (error) {
             console.error(error);

@@ -17,6 +17,8 @@ export class ConversationsService {
                 where: {id: passengerId},
                 select: {
                     id: true,
+                    image: true,
+                    fullName: true,
                     rideRequests: {
                         where: {
                             id: rideRequestId
@@ -40,7 +42,8 @@ export class ConversationsService {
                 },
                 select: {
                     id: true,
-                    isResolved: true
+                    isResolved: true,
+                    driverId: true
                 }
             })
             if(!rideConversation){
@@ -52,6 +55,8 @@ export class ConversationsService {
                         isResolved: true
                     }
                 })
+                
+                this.conversationGateway.passengerFinishedConversationAlert(passenger, rideConversation.driverId)
                 return {success: true}
             }
         } catch (error) {
