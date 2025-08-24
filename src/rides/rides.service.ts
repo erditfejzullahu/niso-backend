@@ -5,6 +5,7 @@ import { Conversations, Message, RideRequest, User, UserInformation } from '@pri
 import { SendPriceOfferDto } from './dto/sendPriceOffer.dto';
 import { ConnectRideRequestDto } from './dto/connectRideRequest.dto';
 import { ConversationsGateway } from 'src/conversations/conversations.gateway';
+import { FinishRideManuallyByDriverDto } from './dto/finishRideManuallyByDriver.dto';
 
 interface MessageInterface extends Message {
     conversation: Conversations & {rideRequest?: RideRequest | null}
@@ -128,6 +129,8 @@ export class RideService {
                 })
             })
 
+            this.conversationGateway.passagerAcceptedDriverPriceOfferAlert(rideDto.driverId);
+
             return {success: true};
 
         } catch (error) {
@@ -222,7 +225,7 @@ export class RideService {
             })
         })
 
-
+        this.conversationGateway.driverAcceptedPassengerPriceOfferAlert(rideDto.passengerId)
 
         return {success: true};
     }
@@ -323,7 +326,47 @@ export class RideService {
     }
 
 
+    //complete ride by driver
+    async completeRideManuallyByDriver(driverId: string, rideDto: FinishRideManuallyByDriverDto){
+        try {
+            const driver = await this.prisma.user.findUnique({where:{id: driverId}});
+            if(!driver) throw new NotFoundException("Nuk u gjet shoferi.");
 
+            const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: rideDto.connectedRideId}, include: {rideRequest: true}});
+            if(!connectedRide) throw new NotFoundException("Nuk u gjet udhetimi.");
+            if(connectedRide.driverId !== driver.id) throw new ForbiddenException("Ju nuk jeni te lejuar per te kryer kete veprim.");
+            
+            //logjika per me kqyr a osht afer from address dhe to address e ride requestit
+            //me lokacionin egzakt te shoferit.
+
+            const driverLocation = rideDto.driverExactLatitude;
+            if(connectedRide.rideRequest.toAddress !== driverLocation){
+                //refund the driver money received.
+
+                await this.prisma.connectedRide.update({
+                    where: {id: connectedRide.id},
+                    data: {
+                        status: "CANCELLED_BY_DRIVER"
+                    }
+                })
+
+            }else{
+                await this.prisma.connectedRide.update({
+                    where: {id: connectedRide.id},
+                    data: {
+                        status: "COMPLETED"
+                    }
+                })
+            }
+
+            this.conversationGateway.driverCompletedRideAlertToPassengerAlert(connectedRide.passengerId, connectedRide.driverId, connectedRide.id)
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
+
+    //cancel ride by passenger
 
     private getRidePrices(ridePrice: number) {
         const paymentFee = 0.00; //bank fee or similar

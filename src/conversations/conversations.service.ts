@@ -118,12 +118,12 @@ export class ConversationsService {
         }
     }
 
-    //check type of message and if its allowed to chat
+    //check if type of message is not ride related and if its allowed to chat
     async checkConversationAllowanceAndType(driverId: string, passengerId: string, conversationId: string){
         try {
-            const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {driverId: true, passengerId: true, type: true}});
+            const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {driverId: true, passengerId: true, type: true, isResolved: true}});
             if(!conversation) throw new NotFoundException("Nuk u gjet biseda aktive.");
-            if(conversation.type === "RIDE_RELATED") throw new ForbiddenException("Nuk lejoheni per kete veprim.");
+            if(conversation.type === "RIDE_RELATED" || conversation.isResolved) throw new ForbiddenException("Nuk lejoheni per kete veprim.");
             if((conversation.driverId !== driverId || conversation.driverId !== passengerId) || (conversation.passengerId !== driverId || conversation.passengerId !== passengerId)) throw new NotFoundException("Biseda nuk u gjet.");
             return true;
         } catch (error) {

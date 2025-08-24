@@ -147,6 +147,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
         }
     }
 
+    //(contactDriverForDifferentReason)
     //contactDriverForDifferentReason helper function
     //for lost items, chatting or smth
     //driver listens to contactedDriverOtherReson
@@ -241,5 +242,13 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
     public passengerFinishedConversationAlert(passenger: Partial<User>, driverId: string){
         const targetDriverSocketId = this.userSocket.get(driverId);
         if(targetDriverSocketId) this.server.to(targetDriverSocketId).emit('passengerFinishedConversation', passenger)
+    }
+
+    //driver manually finished ride(completeRideManuallyByDriver)
+    //shfaqet njoftimi mbi qa don me ba; e klikon shfaqet modali per vlersim e qisi.
+    public driverCompletedRideAlertToPassengerAlert(passengerId: string, driverId: string, connectedRideId: string){
+        const targetPassengerSocketId = this.userSocket.get(passengerId);
+        const sendObject = {passengerId, driverId, connectedRideId}
+        if(targetPassengerSocketId) this.server.to(targetPassengerSocketId).emit('driverManuallyCompletedRide', sendObject)
     }
 }
