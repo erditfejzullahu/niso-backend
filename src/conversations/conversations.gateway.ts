@@ -8,7 +8,7 @@ import { ConversationsService } from "./conversations.service";
 import { JwtService } from "@nestjs/jwt";
 import { Socket } from "socket.io-client";
 import { SendOtherFreeMessageDto } from "./dto/SendOtherFreeMessage";
-import { Role } from "@prisma/client";
+import { RideRequest, Role, User, UserInformation } from "@prisma/client";
 import { UploadService } from "src/upload/upload.service";
 
 @WebSocketGateway({
@@ -163,6 +163,32 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
         if(targetUserIdSocket){
             this.server.to(targetUserIdSocket).emit('makeReadMessages', {success: true});
         }
+    }
+
+
+    //notify drivers about new ride request
+    public async createdRideRequestAlertToDrivers(rideRequest: RideRequest, passenger: Partial<User & {userInformation: UserInformation}>){
+        const driversByCity = await this.prisma.user.findMany({
+            where: {userInformation: {city: passenger.userInformation?.city}},
+            select: {
+                id: true
+            }
+        })
+
+        if(driversByCity && driversByCity.length > 0){
+            driversByCity.forEach(item => {
+                const targetDriverSocketId = this.userSocket.get(item.id);
+                if(targetDriverSocketId){
+                    this.server.to(targetDriverSocketId).emit("newRideRequest", rideRequest, passenger)
+                }
+            })
+        }
+    }
+
+    //when passager accepted driver new price offer
+    public passagerAcceptedDriverPriceOfferAlert(driverId: string){
+        const targetDriverSocketId = this.userSocket.get(driverId);
+        if(targetDriverSocketId) this.server.to(targetDriverSocketId).emit('passengerAcceptedPriceOffer');
     }
 
 }

@@ -1,9 +1,10 @@
 import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateNewRideRequestDto } from './dto/createRide.dto';
-import { Conversations, Message, RideRequest } from '@prisma/client';
+import { Conversations, Message, RideRequest, User, UserInformation } from '@prisma/client';
 import { SendPriceOfferDto } from './dto/sendPriceOffer.dto';
 import { ConnectRideRequestDto } from './dto/connectRideRequest.dto';
+import { ConversationsGateway } from 'src/conversations/conversations.gateway';
 
 interface MessageInterface extends Message {
     conversation: Conversations & {rideRequest?: RideRequest | null}
@@ -12,15 +13,16 @@ interface MessageInterface extends Message {
 @Injectable()
 export class RideService {
     constructor(
-        private readonly prisma: PrismaService
+        private readonly prisma: PrismaService,
+        private readonly conversationGateway: ConversationsGateway
     ){}
 
     async createNewRideRequestByPassenger(passengerId: string, rideDto: CreateNewRideRequestDto) {
         try {
-            const user = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}});
+            const user = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true, fullName: true, image: true, userInformation: {select: {city: true}}}});
             if(!user) throw new NotFoundException("Perdoruesi nuk u gjet.");
 
-            await this.prisma.rideRequest.create({
+            const newRideRequest = await this.prisma.rideRequest.create({
                 data: {
                     passengerId: user.id,
                     price: rideDto.price,
@@ -29,6 +31,8 @@ export class RideService {
                     status: "WAITING"
                 }
             })
+
+            this.conversationGateway.createdRideRequestAlertToDrivers(newRideRequest, user as Partial<User & {userInformation: UserInformation}>);
 
             return {success: true}
         } catch (error) {

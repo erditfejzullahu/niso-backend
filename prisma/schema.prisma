@@ -149,6 +149,9 @@ model UserInformation {
   gender Gender
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([city])
+  @@index([userId])
 }
 
 model DriverFixedTarifs {
