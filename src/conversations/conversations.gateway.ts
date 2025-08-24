@@ -8,7 +8,7 @@ import { ConversationsService } from "./conversations.service";
 import { JwtService } from "@nestjs/jwt";
 import { Socket } from "socket.io-client";
 import { SendOtherFreeMessageDto } from "./dto/SendOtherFreeMessage";
-import { Message, RideRequest, Role, User, UserInformation } from "@prisma/client";
+import { DriverFixedTarifs, Message, RideRequest, Role, User, UserInformation } from "@prisma/client";
 import { UploadService } from "src/upload/upload.service";
 
 @WebSocketGateway({
@@ -209,7 +209,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
         if(targetPassengerId) this.server.to(targetPassengerId).emit('driverSendedPriceOffer', messageWithSender);
     }
 
-    //alert to users that new driver is in place based on city
+    //alert to users that new driver is in place based on city(registerUser)
     public async newRegisteredDriverNotifyToPassengers(newDriver: User & {userInformation: UserInformation}){
         const passengersByCity = await this.prisma.user.findMany({
             where: {userInformation: {city: newDriver.userInformation.city}}
@@ -219,6 +219,20 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
             passengersByCity.forEach(item => {
                 const targetPassengerSocketId = this.userSocket.get(item.id);
                 if(targetPassengerSocketId) this.server.to(targetPassengerSocketId).emit('newDriverInTown', newDriver);
+            })
+        }
+    }
+
+    //alert passengers that driver has created new tarif in town(addFixedTarif)
+    public async newTarifCreatedByDriver(newTarif: DriverFixedTarifs & {user: User}){
+        const passengersByCity = await this.prisma.user.findMany({
+            where: {userInformation: {city: newTarif.city}}
+        })
+
+        if(passengersByCity && passengersByCity.length > 0){
+            passengersByCity.forEach(item => {
+                const targetPassengerSocketId = this.userSocket.get(item.id);
+                if(targetPassengerSocketId) this.server.to(targetPassengerSocketId).emit('newTarifInTown', newTarif);
             })
         }
     }

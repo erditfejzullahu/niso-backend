@@ -1,13 +1,15 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AddFixedTarifDto } from './dto/addFixedTarifs.dto';
-import { KosovoCity } from '@prisma/client';
+import { DriverFixedTarifs, KosovoCity, User } from '@prisma/client';
 import { UpdateFixedTarifDto } from './dto/updateFixedTarifs.dto';
+import { ConversationsGateway } from 'src/conversations/conversations.gateway';
 
 @Injectable()
 export class DriversService {
     constructor(
-        private readonly prisma: PrismaService
+        private readonly prisma: PrismaService,
+        private readonly conversationGateway: ConversationsGateway
     ){}
 
     async getFixedTarifs(userId: string){
@@ -28,7 +30,7 @@ export class DriversService {
             if(!user){
                 throw new BadRequestException("Nuk u gjet ndonje perdorues, me kete mjet identifikimi.")
             }else{
-                await this.prisma.driverFixedTarifs.create({
+                const newTarif = await this.prisma.driverFixedTarifs.create({
                     data: {
                         fixedTarifTitle: fixedTarifDto.fixedTarifTitle,
                         city: fixedTarifDto.city as KosovoCity,
@@ -36,8 +38,21 @@ export class DriversService {
                         price: fixedTarifDto.price,
                         description: fixedTarifDto.description,
                         userId: user.id
+                    },
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                image: true
+                            }
+                        }
                     }
                 })
+
+                //alert passengers that driver created new tarif in town.
+                this.conversationGateway.newTarifCreatedByDriver(newTarif as DriverFixedTarifs & {user: User})
+
                 return {success: true}
             }
         } catch (error) {
