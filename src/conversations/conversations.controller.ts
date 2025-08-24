@@ -46,4 +46,11 @@ export class ConversationsController {
         const user = req.user as User;
         return await this.conversationsService.getIntoConversationWithPassenger(user.id, conversationId);
     }
+
+    @Roles(Role.DRIVER, Role.PASSENGER)
+    @Get('get-messages/:id')
+    async getAllMessagesByConversationId(@Req() req: Request, @Param('id') conversationId: string){
+        const user = req.user as User;
+        return await this.conversationsService.getAllMessagesByConversationId(user.id, conversationId);
+    }
 }
