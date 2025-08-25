@@ -167,8 +167,8 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
     }
 
 
-    //notify drivers about new ride request
-    public async createdRideRequestAlertToDrivers(rideRequest: RideRequest, passenger: Partial<User & {userInformation: UserInformation}>){
+    //notify drivers about new ride request(createNewRideRequestByPassenger)
+    public async createdRideRequestAlertToDrivers(rideRequest: RideRequest, passenger: Partial<User & {userInformation: UserInformation}>, notification: Notification){
         const driversByCity = await this.prisma.user.findMany({
             where: {userInformation: {city: passenger.userInformation?.city}},
             select: {
@@ -176,8 +176,15 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
             }
         })
 
+        //notification updater
+        const targetPassengerSocketId = this.userSocket.get(passenger.id!)
+        if(targetPassengerSocketId){
+            this.server.to(targetPassengerSocketId).emit('newNotification', notification)
+            await this.counterUpdaterToUserAlert(passenger.id!, targetPassengerSocketId)
+        }
+
         if(driversByCity && driversByCity.length > 0){
-            driversByCity.forEach(item => {
+            driversByCity.forEach(async item => {
                 const targetDriverSocketId = this.userSocket.get(item.id);
                 if(targetDriverSocketId){
                     this.server.to(targetDriverSocketId).emit("newRideRequest", rideRequest, passenger)
@@ -268,20 +275,39 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
 
 
     //notification counter updater alert to user
-    public async counterUpdaterToUserAlert(socketId: string, userId: string){
+    public async counterUpdaterToUserAlert(userId: string, socketId?: string | null,){
         const notificationCounter = await this.prisma.notification.count({
             where: {userId}
         })
-        this.server.to(socketId).emit('notificationCounterUpdater', notificationCounter)
+        if(socketId){
+            this.server.to(socketId).emit('notificationCounterUpdater', notificationCounter)
+        }else{
+            const targetUserSocketId = this.userSocket.get(userId);
+            if(targetUserSocketId){
+                this.server.to(targetUserSocketId).emit('notificationCounterUpdater', notificationCounter)
+            }
+        }
     }
 
-    //notification to registered user
+    //notification to registered user(registerUser)
     public notificationToRegisteredUserAlert(userId: string, notification: Notification){
         const targetUserSocketId = this.userSocket.get(userId);
         if(targetUserSocketId){
-            this.counterUpdaterToUserAlert(targetUserSocketId, userId)
+            this.counterUpdaterToUserAlert(userId, targetUserSocketId,)
             this.server.to(targetUserSocketId).emit('newNotificationListener', notification)
         }
     }
+
+    //notification to user that verified identity(verifyIdentity)
+    public notificationToUserVerifiedIdentityAlert(userId: string, notification: Notification){
+        const targetUserSocketId = this.userSocket.get(userId);
+        if(targetUserSocketId){
+            this.counterUpdaterToUserAlert(userId, targetUserSocketId);
+            this.server.to(targetUserSocketId).emit('newNotificationListener', notification);
+
+        }
+    }
+
     
+
 }

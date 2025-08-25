@@ -23,17 +23,30 @@ export class RideService {
             const user = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true, fullName: true, image: true, userInformation: {select: {city: true}}}});
             if(!user) throw new NotFoundException("Perdoruesi nuk u gjet.");
 
-            const newRideRequest = await this.prisma.rideRequest.create({
-                data: {
-                    passengerId: user.id,
-                    price: rideDto.price,
-                    fromAddress: rideDto.fromAddress,
-                    toAddress: rideDto.toAddress,
-                    status: "WAITING"
-                }
-            })
+            await this.prisma.$transaction(async (prisma) => {
+                const newRideRequest = await prisma.rideRequest.create({
+                    data: {
+                        passengerId: user.id,
+                        price: rideDto.price,
+                        fromAddress: rideDto.fromAddress,
+                        toAddress: rideDto.toAddress,
+                        status: "WAITING"
+                    }
+                })
 
-            this.conversationGateway.createdRideRequestAlertToDrivers(newRideRequest, user as Partial<User & {userInformation: UserInformation}>);
+                const newNotification = await prisma.notification.create({
+                    data: {
+                        userId: user.id,
+                        title: "Njoftim mbi udhëtim",
+                        message: "Sapo keni krijuar një kërkesë për udhëtim me sukses",
+                        type: "RIDE_UPDATE",
+                        read: false,
+                        metadata: JSON.stringify({modalAction: true, rideRequest: newRideRequest})
+                    }
+                })
+    
+                this.conversationGateway.createdRideRequestAlertToDrivers(newRideRequest, user as Partial<User & {userInformation: UserInformation}>, newNotification);
+            })
 
             return {success: true}
         } catch (error) {
@@ -115,6 +128,17 @@ export class RideService {
                     }
                 })
 
+                await prisma.notification.create({
+                    data: {
+                        userId: message.conversation.driverId,
+                        title: "Njoftim financiar",
+                        message: `Ju keni fituar ${netEarningsStr}€. Kontrolloni pasqyrën finananciare tek shiriti poshtë.`,
+                        type: "PAYMENT",
+                        read: false,
+                    }
+                })
+                this.conversationGateway.counterUpdaterToUserAlert(message.conversation.driverId)
+
                 await prisma.passengerPayment.create({
                     data: {
                         passengerId: user.id,
@@ -127,6 +151,19 @@ export class RideService {
                         paidAt: new Date()
                     }
                 })
+                
+                await prisma.notification.create({
+                    data: {
+                        userId: user.id,
+                        title: "Njoftim financiar",
+                        message: `Ju keni shpenzuar ${totalPassengerPaid}€. Kontrolloni pasqyrën financiare tek shiriti poshtë.`,
+                        type: "PAYMENT",
+                        read: false
+                    }
+                })
+                this.conversationGateway.counterUpdaterToUserAlert(user.id, null)
+
+
             })
 
             this.conversationGateway.passagerAcceptedDriverPriceOfferAlert(rideDto.driverId);
