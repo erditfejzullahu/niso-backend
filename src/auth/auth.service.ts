@@ -77,36 +77,49 @@ export class AuthService {
         return {success: true}
     }
 
-    async updateUserSession(userId: string, res: Response){
-        const user = await this.prisma.user.findUnique({where: {id: userId}})
-        if(!user) throw new UnauthorizedException("no user id found");
-    }
-
     async registerUser(registerDto: RegisterUserDto, file: Express.Multer.File){
         try {
             const user = await this.prisma.user.findUnique({where: {email: registerDto.email}})
             if(user) throw new UnauthorizedException('Ky email vecse egziston.');
             const hashedPassword = await bcryptjs.hash(registerDto.password, 10);
             const resultImage = await this.uploadService.uploadFile(file, `users/${registerDto.email}`);
-            const newUser = await this.prisma.user.create({
-                data: {
-                    email: registerDto.email,
-                    fullName: registerDto.fullName,
-                    user_verified: false,
-                    role: registerDto.role === 0 ? "DRIVER" : "PASSENGER",
-                    password: hashedPassword,
-                    image: resultImage.success ? resultImage.data?.url : ""
-                },
-                include: {
-                    userInformation: {
-                        select: {
-                            city: true
+
+            await this.prisma.$transaction(async (prisma) => {
+                const newUser = await prisma.user.create({
+                    data: {
+                        email: registerDto.email,
+                        fullName: registerDto.fullName,
+                        user_verified: false,
+                        role: registerDto.role === 0 ? "DRIVER" : "PASSENGER",
+                        password: hashedPassword,
+                        image: resultImage.success ? resultImage.data?.url : ""
+                    },
+                    include: {
+                        userInformation: {
+                            select: {
+                                city: true
+                            }
                         }
                     }
-                }
+                })
+    
+                this.conversationGateway.newRegisteredDriverNotifyToPassengersAlert(newUser as User & {userInformation: UserInformation});
+
+                const notification = await prisma.notification.create({
+                    data: {
+                        userId: newUser.id,
+                        title: "Mirë se erdhët në Niso.",
+                        message: "Kryeni procesin e verifikimit dhe mund të vazhdoni në përdorimin e platformës.",
+                        read: false,
+                        type: "SYSTEM_ALERT",
+                        metadata: JSON.stringify({modalAction: true})
+                    }
+                })
+
+                this.conversationGateway.notificationToRegisteredUserAlert(newUser.id, notification);
+
             })
 
-            this.conversationGateway.newRegisteredDriverNotifyToPassengersAlert(newUser as User & {userInformation: UserInformation});
             return {success: true}
         } catch (error) {
             console.error(error);

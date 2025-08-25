@@ -8,7 +8,7 @@ import { ConversationsService } from "./conversations.service";
 import { JwtService } from "@nestjs/jwt";
 import { Socket } from "socket.io-client";
 import { SendOtherFreeMessageDto } from "./dto/SendOtherFreeMessage";
-import { DriverFixedTarifs, Message, RideRequest, Role, User, UserInformation } from "@prisma/client";
+import { DriverFixedTarifs, Message, Notification, RideRequest, Role, User, UserInformation } from "@prisma/client";
 import { UploadService } from "src/upload/upload.service";
 
 @WebSocketGateway({
@@ -265,4 +265,23 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
         const targetPassengerSocketId = this.userSocket.get(passengerId);
         if(targetPassengerSocketId) this.server.to(targetPassengerSocketId).emit('getNotifiedWhenRideStarts', {success: true});
     }
+
+
+    //notification counter updater alert to user
+    public async counterUpdaterToUserAlert(socketId: string, userId: string){
+        const notificationCounter = await this.prisma.notification.count({
+            where: {userId}
+        })
+        this.server.to(socketId).emit('notificationCounterUpdater', notificationCounter)
+    }
+
+    //notification to registered user
+    public notificationToRegisteredUserAlert(userId: string, notification: Notification){
+        const targetUserSocketId = this.userSocket.get(userId);
+        if(targetUserSocketId){
+            this.counterUpdaterToUserAlert(targetUserSocketId, userId)
+            this.server.to(targetUserSocketId).emit('newNotificationListener', notification)
+        }
+    }
+    
 }
