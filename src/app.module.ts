@@ -17,6 +17,7 @@ import { ConversationsModule } from './conversations/conversations.module';
 import { NotificationsService } from './notifications/notifications.service';
 import { NotificationsController } from './notifications/notifications.controller';
 import { NotificationsModule } from './notifications/notifications.module';
+import { FinancesModule } from './finances/finances.module';
 
 @Module({
   imports: [
@@ -27,7 +28,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     ConfigModule.forRoot({envFilePath: '.env', isGlobal: true}),
     UploadModule,
     ConversationsModule,
-    NotificationsModule
+    NotificationsModule,
+    FinancesModule
   ],
   controllers: [AppController, ConversationsController, NotificationsController],
   providers: [AppService, {provide: APP_GUARD, useClass: JwtAuth}, {provide: APP_GUARD, useClass: RolesGuard}, UploadService, ConversationsService, NotificationsService],
