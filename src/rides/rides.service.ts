@@ -343,19 +343,38 @@ export class RideService {
             if(connectedRide.rideRequest.toAddress !== driverLocation){
                 //refund the driver money received.
 
-                await this.prisma.connectedRide.update({
-                    where: {id: connectedRide.id},
-                    data: {
-                        status: "CANCELLED_BY_DRIVER"
-                    }
+                await this.prisma.$transaction(async (prisma) => {
+                    await prisma.connectedRide.update({
+                        where: {id: connectedRide.id},
+                        data: {
+                            status: "CANCELLED_BY_DRIVER"
+                        }
+                    })
+                    
+                    await prisma.rideRequest.update({
+                        where: {id: connectedRide.rideRequestId},
+                        data: {
+                            status: "CANCELLED",
+                        }
+                    })
                 })
 
             }else{
-                await this.prisma.connectedRide.update({
-                    where: {id: connectedRide.id},
-                    data: {
-                        status: "COMPLETED"
-                    }
+
+                await this.prisma.$transaction(async (prisma) => {
+                    await prisma.connectedRide.update({
+                        where: {id: connectedRide.id},
+                        data: {
+                            status: "COMPLETED"
+                        }
+                    })
+    
+                    await prisma.rideRequest.update({
+                        where: {id: connectedRide.rideRequestId},
+                        data: {
+                            status: "COMPLETED",
+                        }
+                    })
                 })
             }
 
@@ -377,11 +396,20 @@ export class RideService {
             if(connectedRide.passengerId !== passenger.id) throw new ForbiddenException("Ju nuk jeni te lejuar per te kryer kete veprim.");
 
             //logic to refund
-            await this.prisma.connectedRide.update({
-                where: {id: connectedRide.id},
-                data: {
-                    status: "CANCELLED_BY_PASSENGER"
-                }
+            await this.prisma.$transaction(async (prisma) => {
+                await prisma.connectedRide.update({
+                    where: {id: connectedRide.id},
+                    data: {
+                        status: "CANCELLED_BY_PASSENGER"
+                    }
+                })
+    
+                await prisma.rideRequest.update({
+                    where: {id: connectedRide.rideRequestId},
+                    data: {
+                        status: "CANCELLED",
+                    }
+                })
             })
 
             this.conversationGateway.cancelRideManuallyByPassengerAlert(connectedRide.driverId, connectedRide.passengerId, connectedRide.id)
@@ -390,6 +418,28 @@ export class RideService {
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
+
+
+    //start ride by driver when driver and passenger gets in car to drive
+    async startRideManuallyByDriver(driverId: string, connectedRideId: string){
+        const driver = await this.prisma.user.findUnique({where: {id: driverId}, select: {id: true}});
+        if(!driver) throw new NotFoundException("Nuk u gjet shoferi.");
+        const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: connectedRideId}, include: {rideRequest: true}});
+        if(!connectedRide) throw new NotFoundException("Nuk u gjet udhetimi.");
+        if(connectedRide.driverId !== driver.id) throw new ForbiddenException("Ju nuk jeni te lejuar per te kryer kete veprim.");
+
+        await this.prisma.connectedRide.update({
+            where: {id: connectedRide.id},
+            data: {
+                status: "DRIVING"
+            }
+        })
+
+    }
+
+
+    //start ride manually by driver
+
 
     private getRidePrices(ridePrice: number) {
         const paymentFee = 0.00; //bank fee or similar

@@ -61,9 +61,17 @@ export class RideController {
     }
 
     @Roles(Role.PASSENGER)
-    @Patch('complete-ride-manually-passenger')
+    @Patch('cancel-ride-manually-passenger/:id')
     async completeRideManuallyByPassenger(@Req() req: Request, @Param('id') connectedRideId: string){
         const user = req.user as User;
         return await this.rideService.cancelRideManuallyByPassenger(user.id, connectedRideId);
     }
+
+    @Roles(Role.DRIVER)
+    @Patch('start-ride-manually-driver/:id')
+    async startRideManuallyByDriver(@Req() req: Request, @Param('id') connectedRideId: string){
+        const user = req.user as User;
+        return await this.rideService.cancelRideManuallyByPassenger(user.id, connectedRideId)
+    }
+
 }

@@ -259,4 +259,10 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
         const sendObject = {passengerId, driverId, connectedRideId};
         if(targetDriverSocketId) this.server.to(targetDriverSocketId).emit('passengerManuallyCanceledRide', sendObject)
     }
+
+    //when drive starts notify passenger(startRideManuallyByDriver)
+    public startRideManuallyToPassengerAlert(passengerId: string){
+        const targetPassengerSocketId = this.userSocket.get(passengerId);
+        if(targetPassengerSocketId) this.server.to(targetPassengerSocketId).emit('getNotifiedWhenRideStarts', {success: true});
+    }
 }
