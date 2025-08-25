@@ -14,6 +14,9 @@ import { UploadModule } from './upload/upload.module';
 import { ConversationsService } from './conversations/conversations.service';
 import { ConversationsController } from './conversations/conversations.controller';
 import { ConversationsModule } from './conversations/conversations.module';
+import { NotificationsService } from './notifications/notifications.service';
+import { NotificationsController } from './notifications/notifications.controller';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -23,9 +26,10 @@ import { ConversationsModule } from './conversations/conversations.module';
     AuthModule,
     ConfigModule.forRoot({envFilePath: '.env', isGlobal: true}),
     UploadModule,
-    ConversationsModule
+    ConversationsModule,
+    NotificationsModule
   ],
-  controllers: [AppController, ConversationsController],
-  providers: [AppService, {provide: APP_GUARD, useClass: JwtAuth}, {provide: APP_GUARD, useClass: RolesGuard}, UploadService, ConversationsService],
+  controllers: [AppController, ConversationsController, NotificationsController],
+  providers: [AppService, {provide: APP_GUARD, useClass: JwtAuth}, {provide: APP_GUARD, useClass: RolesGuard}, UploadService, ConversationsService, NotificationsService],
 })
 export class AppModule {}

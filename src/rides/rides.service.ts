@@ -379,6 +379,7 @@ export class RideService {
             }
 
             this.conversationGateway.completedRideByDriverAlert(connectedRide.passengerId, connectedRide.driverId, connectedRide.id)
+            return {success: true}
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
@@ -413,6 +414,7 @@ export class RideService {
             })
 
             this.conversationGateway.cancelRideManuallyByPassengerAlert(connectedRide.driverId, connectedRide.passengerId, connectedRide.id)
+            return {success: true}
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
@@ -435,6 +437,7 @@ export class RideService {
             }
         })
 
+        return {success: true}
     }
 
 
