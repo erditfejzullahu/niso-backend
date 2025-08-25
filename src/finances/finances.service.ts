@@ -8,7 +8,7 @@ export class FinancesService {
     ){}
 
     async getDriverFinances(userId: string) {
-
+        
     }
 
     async getPassengerFinances(userId: string){
