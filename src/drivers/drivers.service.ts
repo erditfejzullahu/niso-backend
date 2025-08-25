@@ -3,13 +3,13 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AddFixedTarifDto } from './dto/addFixedTarifs.dto';
 import { DriverFixedTarifs, KosovoCity, User } from '@prisma/client';
 import { UpdateFixedTarifDto } from './dto/updateFixedTarifs.dto';
-import { ConversationsGateway } from 'src/conversations/conversations.gateway';
+import { ConversationsGatewayServices } from 'src/conversations/conversations.gateway-services';
 
 @Injectable()
 export class DriversService {
     constructor(
         private readonly prisma: PrismaService,
-        private readonly conversationGateway: ConversationsGateway
+        private readonly conversationGateway: ConversationsGatewayServices
     ){}
 
     async getFixedTarifs(userId: string){

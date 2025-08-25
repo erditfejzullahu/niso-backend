@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
@@ -8,13 +8,13 @@ import {ConfigModule, ConfigService} from "@nestjs/config";
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { PassportModule } from '@nestjs/passport';
 import { UploadModule } from 'src/upload/upload.module';
+import { ConversationsModule } from 'src/conversations/conversations.module';
 
 @Module({
-  providers: [AuthService, JwtStrategy, RefreshStrategy],
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
   imports: [
     UploadModule,
-    PrismaModule,
     PassportModule,
     ConfigModule.forRoot(),
     JwtModule.registerAsync({
@@ -26,7 +26,9 @@ import { UploadModule } from 'src/upload/upload.module';
         }
       }),
       inject: [ConfigService]
-    })
-  ]
+    }),
+    forwardRef(() => ConversationsModule)
+  ],
+  exports: [AuthService]
 })
 export class AuthModule {}

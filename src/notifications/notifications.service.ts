@@ -6,7 +6,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class NotificationsService {
     constructor(
         private readonly prisma: PrismaService,
-        private readonly conversationGateway: ConversationsGateway
     ){}
 
     async getNotificationById(userId: string, notificationId: string){

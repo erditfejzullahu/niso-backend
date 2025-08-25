@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import bcryptjs from "bcryptjs"
@@ -9,14 +9,16 @@ import { UploadService } from 'src/upload/upload.service';
 import { VerifyIdentityDto } from './dto/verifyIdentity.dto';
 import { UpdateUserInformationDto } from './dto/updateUser.dto';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
-import { ConversationsGateway } from 'src/conversations/conversations.gateway';
+import { ConversationsGatewayServices } from 'src/conversations/conversations.gateway-services';
 @Injectable()
 export class AuthService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly jwtService: JwtService,
         private readonly uploadService: UploadService,
-        private readonly conversationGateway: ConversationsGateway
+        
+        @Inject(forwardRef(() => ConversationsGatewayServices))
+        private readonly gatewayServices: ConversationsGatewayServices
     ) {}
 
     async updateSession(userId: string, res: Response){
@@ -103,7 +105,7 @@ export class AuthService {
                     }
                 })
     
-                this.conversationGateway.newRegisteredDriverNotifyToPassengersAlert(newUser as User & {userInformation: UserInformation});
+                this.gatewayServices.newRegisteredDriverNotifyToPassengersAlert(newUser as User & {userInformation: UserInformation});
 
                 const notification = await prisma.notification.create({
                     data: {
@@ -116,7 +118,7 @@ export class AuthService {
                     }
                 })
 
-                this.conversationGateway.notificationToRegisteredUserAlert(newUser.id, notification);
+                this.gatewayServices.notificationToRegisteredUserAlert(newUser.id, notification);
 
             })
 
@@ -178,7 +180,7 @@ export class AuthService {
                             metadata: JSON.stringify({modalAction: true})
                         }
                     })
-                    this.conversationGateway.notificationToUserVerifiedIdentityAlert(user.id, notification)
+                    this.gatewayServices.notificationToUserVerifiedIdentityAlert(user.id, notification)
                 })
 
                 return {success: true}
@@ -248,5 +250,10 @@ export class AuthService {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server!")
         }
+    }
+
+
+    async verifyAsync(token: string){
+        await this.jwtService.verifyAsync(token);
     }
 }

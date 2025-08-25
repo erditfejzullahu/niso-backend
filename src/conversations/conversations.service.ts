@@ -1,12 +1,12 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ConversationsGateway } from './conversations.gateway';
+import { ConversationsGatewayServices } from './conversations.gateway-services';
 
 @Injectable()
 export class ConversationsService {
     constructor(
         private readonly prisma: PrismaService,
-        private readonly conversationGateway: ConversationsGateway
+        private readonly gatewayServices: ConversationsGatewayServices,
     ){}
 
     // kur osht kry udhetimi e bahet finish prej shoferit ose najqysh me lokacion.
@@ -56,7 +56,7 @@ export class ConversationsService {
                     }
                 })
                 
-                this.conversationGateway.passengerFinishedConversationAlert(passenger, rideConversation.driverId)
+                this.gatewayServices.passengerFinishedConversationAlert(passenger, rideConversation.driverId)
                 return {success: true}
             }
         } catch (error) {
@@ -118,19 +118,7 @@ export class ConversationsService {
         }
     }
 
-    //check if type of message is not ride related and if its allowed to chat
-    async checkConversationAllowanceAndType(driverId: string, passengerId: string, conversationId: string){
-        try {
-            const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {driverId: true, passengerId: true, type: true, isResolved: true}});
-            if(!conversation) throw new NotFoundException("Nuk u gjet biseda aktive.");
-            if(conversation.type === "RIDE_RELATED" || conversation.isResolved) throw new ForbiddenException("Nuk lejoheni per kete veprim.");
-            if((conversation.driverId !== driverId || conversation.driverId !== passengerId) || (conversation.passengerId !== driverId || conversation.passengerId !== passengerId)) throw new NotFoundException("Biseda nuk u gjet.");
-            return true;
-        } catch (error) {
-            console.error(error);
-            throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
-        }
-    }
+    
 
     //merri krejt bisedat per me i shfaq te mesazhet e pasagjerit.
     async getAllConversationsByPassenger(passengerId: string){
@@ -263,7 +251,7 @@ export class ConversationsService {
                 }
             })
 
-            await this.conversationGateway.makeReadMessagesCallFromService(whoSendedMessagesId);
+            await this.gatewayServices.makeReadMessagesCallFromService(whoSendedMessagesId);
 
             return conversationWithMessages;
         } catch (error) {
@@ -297,7 +285,7 @@ export class ConversationsService {
             })
 
             //inform driver if its available.
-            await this.conversationGateway.contactDriverForDifferentReason(conversation.driverId);
+            await this.gatewayServices.contactDriverForDifferentReason(conversation.driverId);
             return {success: true};
 
         } catch (error) {
@@ -305,4 +293,15 @@ export class ConversationsService {
             throw new InternalServerErrorException("Dicka shkoi gabim.")
         }
     };
+
+
+
+
+
+
+
+    
+
+
+    
 }

@@ -4,8 +4,8 @@ import { CreateNewRideRequestDto } from './dto/createRide.dto';
 import { Conversations, Message, RideRequest, User, UserInformation } from '@prisma/client';
 import { SendPriceOfferDto } from './dto/sendPriceOffer.dto';
 import { ConnectRideRequestDto } from './dto/connectRideRequest.dto';
-import { ConversationsGateway } from 'src/conversations/conversations.gateway';
 import { FinishRideManuallyByDriverDto } from './dto/finishRideManuallyByDriver.dto';
+import { ConversationsGatewayServices } from 'src/conversations/conversations.gateway-services';
 
 interface MessageInterface extends Message {
     conversation: Conversations & {rideRequest?: RideRequest | null}
@@ -15,7 +15,7 @@ interface MessageInterface extends Message {
 export class RideService {
     constructor(
         private readonly prisma: PrismaService,
-        private readonly conversationGateway: ConversationsGateway
+        private readonly conversationGateway: ConversationsGatewayServices
     ){}
 
     async createNewRideRequestByPassenger(passengerId: string, rideDto: CreateNewRideRequestDto) {
