@@ -157,16 +157,30 @@ export class AuthService {
                 const idCardsResult = await this.uploadService.uploadMultipleFiles(files.id_card, `users/${user.email}/idCards`);
                 if(idCardsResult.every(item => item.success) === false) throw new BadRequestException('Gabim ne ngarkimin e dokumentit tuaj.');
     
-                await this.prisma.userInformation.create({
-                    data: {
-                        userId: user.id,
-                        ID_Card: idCardsResult.map((item) => item.data?.url),
-                        SelfiePhoto: selfiePhotoResult.data?.url,
-                        address: identityDto.address,
-                        city: identityDto.city as KosovoCity,
-                        gender: identityDto.gender as Gender
-                    },
+                await this.prisma.$transaction(async (prisma) => {
+                    await prisma.userInformation.create({
+                        data: {
+                            userId: user.id,
+                            ID_Card: idCardsResult.map((item) => item.data?.url),
+                            SelfiePhoto: selfiePhotoResult.data?.url,
+                            address: identityDto.address,
+                            city: identityDto.city as KosovoCity,
+                            gender: identityDto.gender as Gender
+                        },
+                    })
+
+                    const notification = await prisma.notification.create({
+                        data: {
+                            userId: user.id,
+                            title: "Njoftim mbi verifikimin e identitetit",
+                            message: "Sapo verifikuar identitetin tuaj me sukses! Mund të vazhdoni të përdorni platformën",
+                            type: "SYSTEM_ALERT",
+                            metadata: JSON.stringify({modalAction: true})
+                        }
+                    })
+                    this.conversationGateway.notificationToUserVerifiedIdentityAlert(user.id, notification)
                 })
+
                 return {success: true}
             }
         } catch (error) {
