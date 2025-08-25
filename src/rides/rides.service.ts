@@ -161,6 +161,7 @@ export class RideService {
                         read: false
                     }
                 })
+
                 this.conversationGateway.counterUpdaterToUserAlert(user.id, null)
 
 
@@ -248,6 +249,18 @@ export class RideService {
                 }
             })
 
+            await prisma.notification.create({
+                data: {
+                    userId: driver.id,
+                    title: "Njoftim financiar",
+                    message: `Ju keni shpenzuar ${totalPassengerPaid}€. Kontrolloni pasqyrën financiare tek shiriti poshtë.`,
+                    type: "PAYMENT",
+                    read: false
+                }
+            })
+            this.conversationGateway.counterUpdaterToUserAlert(driver.id)
+
+
             await prisma.passengerPayment.create({
                 data: {
                     passengerId: message.conversation.passengerId,
@@ -260,6 +273,18 @@ export class RideService {
                     paidAt: new Date()
                 }
             })
+            
+            await prisma.notification.create({
+                data: {
+                    userId: message.conversation.passengerId,
+                    title: "Njoftim financiar",
+                    message: `Ju keni shpenzuar ${totalPassengerPaid}€. Kontrolloni pasqyrën financiare tek shiriti poshtë.`,
+                    type: "PAYMENT",
+                    read: false
+                }
+            })
+            this.conversationGateway.counterUpdaterToUserAlert(message.conversation.driverId)
+
         })
 
         this.conversationGateway.driverAcceptedPassengerPriceOfferAlert(rideDto.passengerId)
@@ -369,7 +394,7 @@ export class RideService {
             const driver = await this.prisma.user.findUnique({where:{id: driverId}, select: {id: true}});
             if(!driver) throw new NotFoundException("Nuk u gjet shoferi.");
 
-            const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: rideDto.connectedRideId}, include: {rideRequest: true}});
+            const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: rideDto.connectedRideId}, include: {rideRequest: true, driver: {select: {id: true, fullName: true, image:true}}}});
             if(!connectedRide) throw new NotFoundException("Nuk u gjet udhetimi.");
             if(connectedRide.driverId !== driver.id) throw new ForbiddenException("Ju nuk jeni te lejuar per te kryer kete veprim.");
             
@@ -394,6 +419,16 @@ export class RideService {
                             status: "CANCELLED",
                         }
                     })
+
+                    await prisma.notification.create({
+                        data: {
+                            userId: connectedRide.passengerId,
+                            title: "Udhëtimi u përfundua",
+                            message: `Shoferi ${connectedRide.driver.fullName} përfundoi udhëtimin. Shiko detajet dhe ndërvepro.`,
+                            type: "RIDE_UPDATE",
+                            metadata: JSON.stringify({modalAction: false, notificationSender: connectedRide.driver, navigateAction: {connectedRide: connectedRide.id}})
+                        }
+                    })
                 })
 
             }else{
@@ -412,9 +447,20 @@ export class RideService {
                             status: "COMPLETED",
                         }
                     })
+
+                    await prisma.notification.create({
+                        data: {
+                            userId: connectedRide.passengerId,
+                            title: "Udhëtimi u përfundua",
+                            message: `Shoferi ${connectedRide.driver.fullName} përfundoi udhëtimin. Shiko detajet dhe ndërvepro.`,
+                            type: "RIDE_UPDATE",
+                            metadata: JSON.stringify({modalAction: false, notificationSender: connectedRide.driver, navigateAction: {connectedRide: connectedRide.id}})
+                        }
+                    })
                 })
             }
 
+            this.conversationGateway.counterUpdaterToUserAlert(connectedRide.passengerId);
             this.conversationGateway.completedRideByDriverAlert(connectedRide.passengerId, connectedRide.driverId, connectedRide.id)
             return {success: true}
         } catch (error) {
@@ -429,7 +475,7 @@ export class RideService {
             const passenger = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}})
             if(!passenger) throw new NotFoundException("Nuk u gjet pasagjeri.");
 
-            const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: connectedRideId}, include: {rideRequest: true}});
+            const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: connectedRideId}, include: {rideRequest: true, passenger: {select: {id: true, fullName: true, image: true}}}});
             if(!connectedRide) throw new NotFoundException("Nuk u gjet udhetimi.");
             if(connectedRide.passengerId !== passenger.id) throw new ForbiddenException("Ju nuk jeni te lejuar per te kryer kete veprim.");
 
@@ -448,8 +494,18 @@ export class RideService {
                         status: "CANCELLED",
                     }
                 })
+                await prisma.notification.create({
+                    data: {
+                        userId: connectedRide.passengerId,
+                        title: "Udhëtimi u përfundua",
+                        message: `Pasagjeri ${connectedRide.passenger.fullName} përfundoi udhëtimin. Shiko detajet dhe ndërvepro.`,
+                        type: "RIDE_UPDATE",
+                        metadata: JSON.stringify({modalAction: false, notificationSender: connectedRide.passenger, navigateAction: {connectedRide: connectedRide.id}})
+                    }
+                })
             })
 
+            this.conversationGateway.counterUpdaterToUserAlert(connectedRide.driverId)
             this.conversationGateway.cancelRideManuallyByPassengerAlert(connectedRide.driverId, connectedRide.passengerId, connectedRide.id)
             return {success: true}
         } catch (error) {
@@ -461,18 +517,40 @@ export class RideService {
 
     //start ride by driver when driver and passenger gets in car to drive
     async startRideManuallyByDriver(driverId: string, connectedRideId: string){
-        const driver = await this.prisma.user.findUnique({where: {id: driverId}, select: {id: true}});
+        const driver = await this.prisma.user.findUnique({where: {id: driverId}, select: {id: true, fullName: true}});
         if(!driver) throw new NotFoundException("Nuk u gjet shoferi.");
-        const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: connectedRideId}, include: {rideRequest: true}});
+        const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: connectedRideId}, include: {rideRequest: true, passenger: {select: {fullName: true, id: true}}}});
         if(!connectedRide) throw new NotFoundException("Nuk u gjet udhetimi.");
         if(connectedRide.driverId !== driver.id) throw new ForbiddenException("Ju nuk jeni te lejuar per te kryer kete veprim.");
 
-        await this.prisma.connectedRide.update({
-            where: {id: connectedRide.id},
-            data: {
-                status: "DRIVING"
-            }
+        this.prisma.$transaction(async (prisma) => {
+            await prisma.connectedRide.update({
+                where: {id: connectedRide.id},
+                data: {
+                    status: "DRIVING"
+                }
+            })
+
+            await prisma.notification.create({
+                data: {
+                    userId: connectedRide.driverId,
+                    title: "Udhëtimi filloi!",
+                    message: `Udhëtimi juaj me pasagjerin ${connectedRide.passenger.fullName} filloi! Do të njoftoheni për rifreskime të reja.`,
+                    type: "RIDE_UPDATE"
+                }
+            })
+            await prisma.notification.create({
+                data: {
+                    userId: connectedRide.passengerId,
+                    title: "Udhëtimi filloi!",
+                    message: `Udhëtimi juaj me shoferin ${driver.fullName} filloi! Do të njoftoheni për rifreskime të reja.`,
+                    type: "RIDE_UPDATE"
+                }
+            })
         })
+
+        this.conversationGateway.counterUpdaterToUserAlert(driver.id)
+        this.conversationGateway.counterUpdaterToUserAlert(connectedRide.passenger.id)
 
         return {success: true}
     }
