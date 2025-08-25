@@ -271,7 +271,7 @@ model Notification {
   message     String
   type        NotificationType
   read        Boolean          @default(false)
-  metadata    Json? //modalAction, notificationSender, navigateAction, rideRequest
+  metadata    Json? //modalAction, notificationSender, navigateAction, rideRequest, completedRide
 
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
