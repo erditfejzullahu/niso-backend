@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ConversationsGateway } from 'src/conversations/conversations.gateway';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -8,6 +8,19 @@ export class NotificationsService {
         private readonly prisma: PrismaService,
         private readonly conversationGateway: ConversationsGateway
     ){}
+
+    async getNotificationById(userId: string, notificationId: string){
+        try {
+            const notification = await this.prisma.notification.findUnique({where: {id: notificationId}});
+            if(!notification) throw new NotFoundException("Njoftimi nuk u gjet.");
+            if(notification.userId !== userId) throw new ForbiddenException("Ju nuk keni te drejte per kryerjen e ketij veprimi.");
+
+            return notification;
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
 
     async getUserNotifications(userId: string){
         try {

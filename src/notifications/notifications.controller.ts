@@ -31,6 +31,11 @@ export class NotificationsController {
         return await this.notificationService.deleteNotification(user.id, notificationId)
     }
 
-
+    @Roles(Role.DRIVER, Role.PASSENGER)
+    @Get('notification/:id')
+    async getNotificationById(@Req() req: Request, @Param('id') notificationId: string){
+        const user = req.user as User;
+        return await this.notificationService.getNotificationById(user.id, notificationId)
+    }
 
 }
