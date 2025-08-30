@@ -21,6 +21,7 @@ export class AuthController {
 
 
     @Roles(Role.DRIVER, Role.PASSENGER)
+    @Post('update-profile-image')
     @UseInterceptors(FileInterceptor('newProfileImage'))
     async updateProfileImage(
         @Req() req: Request,
