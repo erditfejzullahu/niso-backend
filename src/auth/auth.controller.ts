@@ -19,6 +19,27 @@ export class AuthController {
         private readonly authService: AuthService,
     ){}
 
+
+    @Roles(Role.DRIVER, Role.PASSENGER)
+    @UseInterceptors(FileInterceptor('newProfileImage'))
+    async updateProfileImage(
+        @Req() req: Request,
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [
+                    new MaxFileSizeValidator({maxSize: 10 * 1024 * 1024}), //10mb
+                    new FileTypeValidator({
+                        fileType: /(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/
+                    })
+                ]
+            })
+        )
+        file: Express.Multer.File
+    ){
+        const user = req.user as User;
+        await this.authService.updateProfilePicture(user.id, file);
+    }
+
     @Public()
     @Post('login')
     async loginUser(@Body() body: LoginUserDto, @Res({passthrough: true}) res: Response){

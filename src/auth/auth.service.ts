@@ -197,6 +197,23 @@ export class AuthService {
         }
     }
 
+    async updateProfilePicture(userId: string, image: Express.Multer.File) {
+        try {
+            const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true, email: true,image: true}});
+            if(!user) throw new NotFoundException("Nuk u gjet perdoruesi.");
+            const publicId = this.uploadService.extractPublicIdFromUrl(user.image);
+            const newUserImage = await this.uploadService.uploadFile(image, `users/${user.email}`);
+            if(!newUserImage.success) throw new BadRequestException('Dicka shkoi gabim ne ngarkimin e fotos stuaj te profilit.');
+
+            await this.uploadService.deleteFile(publicId);
+            await this.prisma.user.update({where: {id: user.id}, data: {image: newUserImage.data?.url}})
+            return {success: true};
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
+
     async updateUserInformation(userId: string, updateDto: UpdateUserInformationDto, newImage?: Express.Multer.File) {
         try {
             const user = await this.prisma.user.findUnique({where: {id: userId}});
@@ -209,6 +226,8 @@ export class AuthService {
 
                     const newUserImage = await this.uploadService.uploadFile(newImage, `users/${user.email}`);
                     if(!newUserImage.success) throw new BadRequestException('Dicka shkoi gabim ne ngarkimin e fotos stuaj te profilit.');
+                    await this.uploadService.deleteFile(publicId);
+
                     userImage = newUserImage.data?.url
                 }
                 await this.prisma.user.update(
