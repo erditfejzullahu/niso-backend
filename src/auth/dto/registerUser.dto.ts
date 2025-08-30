@@ -15,7 +15,7 @@ export class RegisterUserDto {
     @IsNumber()
     @Min(0)
     @Max(1)
-    role: number;
+    accountType: number;
 
     @IsStrongPassword({
         minLength: 8,
@@ -26,5 +26,6 @@ export class RegisterUserDto {
     })
     password: string;
     
-
+    @IsString()
+    confirmPassword: string;
 }

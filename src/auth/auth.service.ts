@@ -23,6 +23,7 @@ export class AuthService {
 
     async getProfile(userId: string) {
         const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true, fullName: true, email: true, role: true, user_verified: true, createdAt: true, image: true}});
+        
         if(!user) throw new BadRequestException("No user found");
         return user;
     }
@@ -52,7 +53,7 @@ export class AuthService {
         return {success: true};
     }
 
-    async login(email: string, password: string, res: Response) {
+    async login(email: string, password: string, res: Response) {        
         const user = await this.prisma.user.findUnique({where: {email}});
         if(!user) throw new UnauthorizedException('Kredencialet e pavlefshme');
 
@@ -98,7 +99,7 @@ export class AuthService {
                         email: registerDto.email,
                         fullName: registerDto.fullName,
                         user_verified: false,
-                        role: registerDto.role === 0 ? "DRIVER" : "PASSENGER",
+                        role: registerDto.accountType === 0 ? "DRIVER" : "PASSENGER",
                         password: hashedPassword,
                         image: resultImage.success ? resultImage.data?.url : ""
                     },
@@ -111,8 +112,6 @@ export class AuthService {
                     }
                 })
     
-                this.gatewayServices.newRegisteredDriverNotifyToPassengersAlert(newUser as User & {userInformation: UserInformation});
-
                 const notification = await prisma.notification.create({
                     data: {
                         userId: newUser.id,
@@ -176,6 +175,8 @@ export class AuthService {
                             gender: identityDto.gender as Gender
                         },
                     })
+
+                    this.gatewayServices.newRegisteredDriverNotifyToPassengersAlert(user as User & {userInformation: UserInformation});
 
                     const notification = await prisma.notification.create({
                         data: {
