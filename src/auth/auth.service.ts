@@ -21,6 +21,12 @@ export class AuthService {
         private readonly gatewayServices: ConversationsGatewayServices
     ) {}
 
+    async getProfile(userId: string) {
+        const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true, fullName: true, email: true, role: true, user_verified: true, createdAt: true, image: true}});
+        if(!user) throw new BadRequestException("No user found");
+        return user;
+    }
+
     async updateSession(userId: string, res: Response){
         const user = await this.prisma.user.findUnique({where: {id: userId}});
         if(!user) throw new NotFoundException("Nuk u gjet perdoruesi.");

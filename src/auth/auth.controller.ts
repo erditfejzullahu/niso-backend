@@ -46,6 +46,13 @@ export class AuthController {
     }
 
     @Roles(Role.DRIVER, Role.PASSENGER)
+    @Get('profile')
+    async getProfile(@Req() req: Request){
+        const user = req.user as User;
+        await this.authService.getProfile(user.id);
+    }
+
+    @Roles(Role.DRIVER, Role.PASSENGER)
     @Post('verify-identity')
     @UseInterceptors(FileFieldsInterceptor([
         {name: "id_card", maxCount: 2},
