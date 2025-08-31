@@ -177,7 +177,7 @@ export class ConversationsGatewayServices{
     //alert to users that new driver is in place based on city(registerUser)
     public async newRegisteredDriverNotifyToPassengersAlert(newDriver: User & {userInformation: UserInformation}){
         const passengersByCity = await this.prisma.user.findMany({
-            where: {userInformation: {city: newDriver.userInformation.city}}
+            where: {userInformation: {city: newDriver.userInformation.city}}, select: {id: true}
         })
 
         if(passengersByCity && passengersByCity.length > 0){
@@ -191,7 +191,7 @@ export class ConversationsGatewayServices{
     //alert passengers that driver has created new tarif in town(addFixedTarif)
     public async newTarifCreatedByDriverAlert(newTarif: DriverFixedTarifs & {user: User}){
         const passengersByCity = await this.prisma.user.findMany({
-            where: {userInformation: {city: newTarif.city}}
+            where: {userInformation: {city: newTarif.city}}, select: {id: true}
         })
 
         if(passengersByCity && passengersByCity.length > 0){

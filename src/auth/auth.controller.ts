@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, FileTypeValidator, Get, MaxFileSizeValidator, ParseFilePipe, Patch, Post, Req, Res, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, FileTypeValidator, Get, MaxFileSizeValidator, ParseFilePipe, Patch, Post, Req, Res, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginUserDto } from './dto/loginUser.dto';
 import type { Response, Request } from 'express';
@@ -12,6 +12,7 @@ import { Role, User } from '@prisma/client';
 import { VerifyIdentityDto } from './dto/verifyIdentity.dto';
 import { UpdateUserInformationDto } from './dto/updateUser.dto';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
@@ -85,14 +86,15 @@ export class AuthController {
         @Body() body: VerifyIdentityDto,
         @UploadedFiles() files: {
             id_card: Express.Multer.File[],
-            selfie: Express.Multer.File
+            selfie: Express.Multer.File[]
         }
     ){
+        
         const user = request.user as User;
-        if(!files.selfie.mimetype.startsWith('image/')){
+        if(!files.selfie[0].mimetype.startsWith('image/')){
             throw new BadRequestException('Fotoja selfie duhet te jete skedar imazhi.')
         }
-        if(files.selfie.size > 10 * 1024 * 1024){
+        if(files.selfie[0].size > 10 * 1024 * 1024){
             throw new BadRequestException('Fajlli duhet te jete maksimum 10MB.')
         }
         
@@ -158,10 +160,14 @@ export class AuthController {
         return await this.authService.updatePassword(user.id, body);
     }
 
-    @Roles(Role.DRIVER, Role.PASSENGER)
-    @Get('update-session')
+    // @Roles(Role.DRIVER, Role.PASSENGER)
+    @Public()
+    @UseGuards(AuthGuard('jwt-refresh'))
+    @Post('update-session')
     async updateSession(@Req() req: Request, @Res({passthrough: true}) res: Response){
         const user = req.user as User;
+        console.log(user.id);
+        
         return await this.authService.updateSession(user.id, res);
     }
     

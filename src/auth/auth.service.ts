@@ -139,7 +139,7 @@ export class AuthService {
 
         const accessToken = await this.jwtService.signAsync(payload, {
             secret: process.env.JWT_ACCESS_SECRET,
-            expiresIn: process.env.JWT_ACCESS_EXPIRATION
+            expiresIn: "1m"
         });
 
         const refreshToken = await this.jwtService.signAsync(payload, {
@@ -150,21 +150,22 @@ export class AuthService {
         return {accessToken, refreshToken};
     }
 
-    async verifyIdentity(userId: string, identityDto: VerifyIdentityDto, files: {selfie: Express.Multer.File, id_card: Express.Multer.File[]}){
+    async verifyIdentity(userId: string, identityDto: VerifyIdentityDto, files: {selfie: Express.Multer.File[], id_card: Express.Multer.File[]}){
         try {
             
-            const user = await this.prisma.user.findUnique({where: {id: userId}, include: {userInformation: true}});
+            const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true, email: true, userInformation: true}});
             if(!user){
                 throw new BadRequestException('Nuk u gjet ndonje perdorues.');
             }else if(user.userInformation){
                 throw new BadRequestException('Ju vecse keni kompletuar procesin e verifikimit. Prisni per ndryshim te statusit')
             }else{
-                const selfiePhotoResult = await this.uploadService.uploadFile(files.selfie, `users/${user.email}/selfie`);
+
+                const selfiePhotoResult = await this.uploadService.uploadFile(files.selfie[0], `users/${user.email}/selfie`);
                 if(!selfiePhotoResult.success) throw new BadRequestException('Gabim ne ngarkimin e fotos suaj selfie.');
                 const idCardsResult = await this.uploadService.uploadMultipleFiles(files.id_card, `users/${user.email}/idCards`);
                 if(idCardsResult.every(item => item.success) === false) throw new BadRequestException('Gabim ne ngarkimin e dokumentit tuaj.');
     
-                await this.prisma.$transaction(async (prisma) => {
+                const result: any = await this.prisma.$transaction(async (prisma) => {
                     await prisma.userInformation.create({
                         data: {
                             userId: user.id,
@@ -176,8 +177,7 @@ export class AuthService {
                         },
                     })
 
-                    this.gatewayServices.newRegisteredDriverNotifyToPassengersAlert(user as User & {userInformation: UserInformation});
-
+                    
                     const notification = await prisma.notification.create({
                         data: {
                             userId: user.id,
@@ -187,9 +187,14 @@ export class AuthService {
                             metadata: JSON.stringify({modalAction: true})
                         }
                     })
-                    this.gatewayServices.notificationToUserVerifiedIdentityAlert(user.id, notification)
+                    return notification;
                 })
 
+                const updatedUser = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true, userInformation: true}})
+                
+                this.gatewayServices.newRegisteredDriverNotifyToPassengersAlert(updatedUser as User & {userInformation: UserInformation}).catch(error => console.error('Background notification failed:', error));
+                
+                this.gatewayServices.notificationToUserVerifiedIdentityAlert(user.id, result.notification)
                 return {success: true}
             }
         } catch (error) {

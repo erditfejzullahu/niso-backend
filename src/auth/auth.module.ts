@@ -11,7 +11,7 @@ import { UploadModule } from 'src/upload/upload.module';
 import { ConversationsModule } from 'src/conversations/conversations.module';
 
 @Module({
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, RefreshStrategy],
   controllers: [AuthController],
   imports: [
     UploadModule,
