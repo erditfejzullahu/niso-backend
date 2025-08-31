@@ -138,17 +138,24 @@ export class DriversService {
         }
     }
 
-    async getRegularClients(userId: string){
+    async getRegularClients(userId: string, searchParam?: string | null){
         try {
             const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true}});
             if(!user) throw new NotFoundException("Nuk u gjet ndonje perdorues me kete mjet identifikimi.");
             
+            let where: any = {driverId: user.id, status: "COMPLETED"};
+            if(searchParam){
+                where.passenger = {
+                    fullName: {
+                        contains: searchParam,
+                        mode: "insensitive"
+                    }
+                }
+            }
+
             const groups = await this.prisma.connectedRide.groupBy({
                 by: ["passengerId"],
-                where: {
-                    driverId: user.id,
-                    status: "COMPLETED"
-                },
+                where: where,
                 _count: {passengerId: true},
                 having: {passengerId: {_count: {gt: 2}}},
                 orderBy: {_count: {passengerId: "desc"}},
@@ -166,6 +173,7 @@ export class DriversService {
             const result = passengers
                 .map(p => ({...p, ridesWithDriver: countMap.get(p.id) ?? 0}))
                 .sort((a,b) => b.ridesWithDriver - a.ridesWithDriver);
+                
             return {success: true, result}
         } catch (error) {
             console.error(error);

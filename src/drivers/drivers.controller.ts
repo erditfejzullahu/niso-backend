@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { DriversService } from './drivers.service';
 import { Roles } from 'common/decorators/roles.decorator';
 import { Role, User } from '@prisma/client';
@@ -35,9 +35,9 @@ export class DriversController {
 
     @Roles(Role.DRIVER)
     @Get('regular-clients')
-    async getRegularClients(@Req() req: Request){
+    async getRegularClients(@Req() req: Request, @Query('searchParam') searchParam?: string | null){
         const user = req.user as User;
-        return await this.driverService.getRegularClients(user.id);
+        return await this.driverService.getRegularClients(user.id, searchParam);
     }
 
     @Roles(Role.DRIVER)
