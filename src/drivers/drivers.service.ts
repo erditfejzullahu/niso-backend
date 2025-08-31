@@ -159,15 +159,14 @@ export class DriversService {
 
             const passengers = await this.prisma.user.findMany({
                 where: {id: {in: passengerIds}},
-                select: {id: true, fullName: true, image: true}
+                select: {id: true, fullName: true, image: true, userInformation: {select: {address: true, yourDesiresForRide: true}}}
             })
 
             const countMap = new Map(groups.map(g => [g.passengerId, g._count.passengerId]));
             const result = passengers
                 .map(p => ({...p, ridesWithDriver: countMap.get(p.id) ?? 0}))
                 .sort((a,b) => b.ridesWithDriver - a.ridesWithDriver);
-            
-            return {success: true, regularClients: result}
+            return {success: true, result}
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")

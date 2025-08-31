@@ -145,6 +145,7 @@ model UserInformation {
   ID_Card     String[]
   SelfiePhoto String
   address String
+  yourDesiresForRide String?
   city KosovoCity
   gender Gender
   createdAt   DateTime @default(now())

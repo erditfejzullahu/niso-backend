@@ -330,7 +330,7 @@ export class AuthService {
 
     async updateUserInformation(userId: string, updateDto: UpdateUserInformationDto, newImage?: Express.Multer.File) {
         try {
-            const user = await this.prisma.user.findUnique({where: {id: userId}});
+            const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true, image: true, email: true, role: true}});
             if(!user){
                 throw new BadRequestException('Nuk u gjet ndonje perdorues.')
             }else{
@@ -357,7 +357,8 @@ export class AuthService {
                             update: {
                                 address: updateDto.address,
                                 city: updateDto.city as KosovoCity,
-                                gender: updateDto.gender as Gender
+                                gender: updateDto.gender as Gender,
+                                yourDesiresForRide: user.role === "PASSENGER" ? updateDto.yourDesiresForRide : ""
                             }
                         }
                     }
