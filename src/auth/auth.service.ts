@@ -177,6 +177,8 @@ export class AuthService {
                         },
                     })
 
+                    await prisma.user.update({where: {id: user.id}, data: {user_verified: true}})
+
                     
                     const notification = await prisma.notification.create({
                         data: {
