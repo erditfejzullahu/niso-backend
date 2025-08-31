@@ -12,12 +12,29 @@ export class DriversService {
         private readonly conversationGateway: ConversationsGatewayServices
     ){}
 
-    async getFixedTarifs(userId: string){
+    async getFixedTarifs(userId: string, searchParam?: string | null){
         try {
+            let where: any = {userId};
+            if(searchParam) {
+                where.OR = [
+                        {
+                            fixedTarifTitle: {
+                                contains: searchParam.trim(),
+                                mode: "insensitive"
+                            }
+                        },
+                        {
+                            description: {
+                                contains: searchParam.trim(),
+                                mode: "insensitive"
+                            }
+                        },
+                    ]
+            }
             const fixedTarifs = await this.prisma.driverFixedTarifs.findMany({
-                where: {userId}
+                where
             })
-            return {success: true, fixedTarifs};
+            return fixedTarifs;
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");

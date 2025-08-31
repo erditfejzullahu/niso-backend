@@ -14,9 +14,9 @@ export class DriversController {
 
     @Roles(Role.DRIVER)
     @Get('all-tarifs')
-    async getTarifs(@Req() req: Request){
+    async getTarifs(@Req() req: Request, @Query('searchParam') searchParam?: string | null){
         const user = req.user as User;
-        return await this.driverService.getFixedTarifs(user.id);
+        return await this.driverService.getFixedTarifs(user.id, searchParam);
     }
 
     @Roles(Role.DRIVER)
