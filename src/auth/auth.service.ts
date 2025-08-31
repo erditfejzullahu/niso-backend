@@ -28,6 +28,112 @@ export class AuthService {
         return user;
     }
 
+    async getProfileDetails(user: User){
+        if(user.role === "DRIVER"){
+            const [getUserDetails, getRegularClients, getDriverFinances] = await Promise.all([
+                this.prisma.user.findUnique({
+                    where: {id: user.id},
+                    select: {
+                        userInformation: {
+                            select: {
+                                address: true,
+                                city: true,
+                                gender: true
+                            }
+                        },
+                        _count: {
+                            select: {
+                                ridesAsDriver: {
+                                    where: {
+                                        status: "COMPLETED"
+                                    }
+                                },
+                            },
+                        }
+                    }
+                }),
+                this.prisma.connectedRide.groupBy({
+                    by: ["passengerId"],
+                    where: {
+                        driverId: user.id,
+                        status: "COMPLETED"
+                    },
+                    _count: {passengerId: true},
+                    having: {passengerId: {_count: {gt: 2}}},
+                }),
+                this.prisma.driverEarning.aggregate({
+                    where: {
+                        driverId: user.id,
+                        status: "PAID"
+                    },
+                    _sum: {
+                        netEarnings: true
+                    }
+                })
+            ])
+            const regularClients = getRegularClients.length;
+            const driverNetEarnings = getDriverFinances._sum.netEarnings || 0
+
+            if(!getUserDetails) throw new BadRequestException("Nuk u gjeten informatat.");
+
+            return {
+                profileDetails: {
+                    completedRides: getUserDetails._count.ridesAsDriver,
+                    userInformations: getUserDetails?.userInformation,
+                    regularClients,
+                    driverNetEarnings
+                }
+            }
+            
+        }else{
+            const [getUserDetails, getPassengerFinances] = await Promise.all([
+                this.prisma.user.findUnique({
+                    where: {id: user.id},
+                    select: {
+                        userInformation: {
+                            select: {
+                                address: true,
+                                city: true,
+                                gender: true
+                            }
+                        },
+                        _count: {
+                            select: {
+                                ridesAsPassenger: {
+                                    where: {
+                                        status: "COMPLETED"
+                                    }
+                                },
+                                preferredByUsers: true
+                            },
+                        }
+                    }
+                }),
+                this.prisma.passengerPayment.aggregate({
+                    where: {
+                        passengerId: user.id,
+                        status: "PAID"
+                    },
+                    _sum: {
+                        totalPaid: true
+                    }
+                })
+            ])
+
+            if(!getUserDetails) throw new BadRequestException("Nuk u gjeten informatat.");
+            const passengerExpenses = getPassengerFinances._sum.totalPaid || 0
+
+            return {
+                profileDetails: {
+                    userInformations: getUserDetails.userInformation,
+                    preferredDrivers: getUserDetails._count.preferredByUsers,
+                    completedRides: getUserDetails._count.ridesAsPassenger,
+                    passengerExpenses
+                }
+            }
+        }
+    }
+
     async updateSession(userId: string, res: Response){
         const user = await this.prisma.user.findUnique({where: {id: userId}});
         if(!user) throw new NotFoundException("Nuk u gjet perdoruesi.");
