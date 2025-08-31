@@ -352,6 +352,7 @@ export class AuthService {
                     data: {
                         fullName: updateDto.fullName,
                         image: userImage,
+                        email: updateDto.email,
                         userInformation: {
                             update: {
                                 address: updateDto.address,

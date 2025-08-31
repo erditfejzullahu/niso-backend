@@ -1,6 +1,6 @@
 import { Gender, KosovoCity } from "@prisma/client";
 import { Transform, TransformFnParams } from "class-transformer";
-import { IsEnum, IsNotEmpty, IsString, IsStrongPassword, IsUrl } from "class-validator";
+import { IsEmail, IsEnum, IsNotEmpty, IsString, IsStrongPassword, IsUrl } from "class-validator";
 import { sanitizeContent } from "common/utils/sanitize.utils";
 
 export class UpdateUserInformationDto {
@@ -19,4 +19,7 @@ export class UpdateUserInformationDto {
 
     @IsEnum(Gender)
     gender: string;
+
+    @IsEmail()
+    email: string;
 }
