@@ -4,6 +4,8 @@ import { AddFixedTarifDto } from './dto/addFixedTarifs.dto';
 import { DriverFixedTarifs, KosovoCity, User } from '@prisma/client';
 import { UpdateFixedTarifDto } from './dto/updateFixedTarifs.dto';
 import { ConversationsGatewayServices } from 'src/conversations/conversations.gateway-services';
+import { GetAvailableRidesDto } from './dto/getTarifsFilter.dto';
+import { PaginationDto } from 'utils/pagination.dto';
 
 @Injectable()
 export class DriversService {
@@ -126,29 +128,75 @@ export class DriversService {
         }
     }
 
-    async getAvailableRides(){
+    async getAvailableRides(filter: GetAvailableRidesDto, pagination: PaginationDto){
         try {
-            const availableRides = await this.prisma.rideRequest.findMany({
-                where: {status: "WAITING"},
-                orderBy: {
-                    createdAt: "desc"
-                },
-                select: {
-                    price: true,
-                    fromAddress: true,
-                    toAddress: true,
-                    status: true,
-                    createdAt: true,
-                    passenger: {
+            const whereClause: any = {
+                status: "WAITING"
+            };
+
+            // Add date range filter - use the exact datetime values from client
+            if (filter.fromDate || filter.toDate) {
+                    whereClause.createdAt = {};
+                if (filter.fromDate) {
+                    whereClause.createdAt.gte = filter.fromDate;
+                }
+                if (filter.toDate) {
+                    whereClause.createdAt.lte = filter.toDate;
+                }
+            }
+
+            // Add urgency filter
+            if (filter.urgency === 'urgent') {
+                whereClause.isUrgent = true;
+            }
+
+            // Add distance range filter
+            if ( filter.distanceRange !== null) {
+                whereClause.distanceKm = {
+                    lte: filter.distanceRange
+                };
+            }
+
+            // Determine sort order
+            const orderByClause: any = {
+                createdAt: filter.sortOrder === 'oldest' ? 'asc' : 'desc'
+            };
+
+            const [availableRides, totalCount] = await Promise.all([
+                this.prisma.rideRequest.findMany({
+                    where: whereClause,
+                    orderBy: orderByClause,
+                    skip: pagination.getSkip(),
+                    take: pagination.limit,
+                    select: {
+                        id: true,
+                        price: true,
+                        fromAddress: true,
+                        toAddress: true,
+                        status: true,
+                        distanceKm: true,
+                        distanceCalculatedPriceRide: true,
+                        createdAt: true,
+                        isUrgent: true,
+                        passenger: {
                         select: {
                             fullName: true,
                             image: true,
                         }
+                        }
                     }
-                }
-            })
+                }),
+                this.prisma.rideRequest.count({
+                    where: whereClause
+                })
+            ])
 
-            return {success: true, availableRides}
+            const totalPages = Math.ceil(totalCount / pagination.limit);
+            const hasMore = pagination.page < totalPages
+
+            const allRides = {...availableRides, hasMore}
+
+            return allRides;
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server");

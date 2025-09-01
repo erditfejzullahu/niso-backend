@@ -5,6 +5,8 @@ import { Role, User } from '@prisma/client';
 import type { Request } from 'express';
 import { AddFixedTarifDto } from './dto/addFixedTarifs.dto';
 import { UpdateFixedTarifDto } from './dto/updateFixedTarifs.dto';
+import { GetAvailableRidesDto } from './dto/getTarifsFilter.dto';
+import { PaginationDto } from 'utils/pagination.dto';
 
 @Controller('drivers')
 export class DriversController {
@@ -28,9 +30,9 @@ export class DriversController {
 
     @Roles(Role.DRIVER)
     @Get('available-rides')
-    async getAvailableRides(@Req() req: Request){
+    async getAvailableRides(@Req() req: Request, @Query() filterParams: GetAvailableRidesDto, @Query() pagination: PaginationDto){
         const user = req.user as User;
-        return await this.driverService.getAvailableRides();
+        return await this.driverService.getAvailableRides(filterParams, pagination);
     }
 
     @Roles(Role.DRIVER)

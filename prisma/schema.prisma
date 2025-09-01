@@ -174,9 +174,12 @@ model RideRequest {
   passengerId   String
   driver        User?             @relation(fields: [driverId], references: [id], name: "DriverAcceptedRequests", onDelete: SetNull)
   driverId      String?
-  price         Decimal           @db.Decimal(10,2)
+  price         Decimal           @db.Decimal(10,2) @default(0)
+  distanceCalculatedPriceRide Boolean @default(false)
+  distanceKm Decimal  @db.Decimal(10,2)
   fromAddress   String
   toAddress     String
+  isUrgent Boolean @default(false)
   status        RideRequestStatus @default(WAITING)
   connectedRide ConnectedRide?
   rideRequestConversation Conversations?
