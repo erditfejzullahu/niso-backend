@@ -146,7 +146,7 @@ export class DriversService {
             }
 
             // Add urgency filter
-            if (filter.urgency === 'urgent') {
+            if (filter.urgencyType === 'urgent') {
                 whereClause.isUrgent = true;
             }
 
@@ -194,9 +194,12 @@ export class DriversService {
             const totalPages = Math.ceil(totalCount / pagination.limit);
             const hasMore = pagination.page < totalPages
 
-            const allRides = {...availableRides, hasMore}
+            // const allRides = {...availableRides, hasMore}
 
-            return allRides;
+            return {
+                rides: availableRides,
+                hasMore
+            };
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server");

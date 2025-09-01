@@ -18,7 +18,7 @@ export class GetAvailableRidesDto {
 
     @IsOptional()
     @IsIn(['urgent', 'normal'])
-    urgency: 'urgent' | 'normal' = 'normal'
+    urgencyType: 'urgent' | 'normal' = 'normal'
 
     @IsOptional()
     @IsNumber()
