@@ -30,7 +30,9 @@ export class RideService {
                         price: rideDto.price,
                         fromAddress: rideDto.fromAddress,
                         toAddress: rideDto.toAddress,
-                        status: "WAITING"
+                        status: "WAITING",
+                        distanceCalculatedPriceRide: false,
+                        distanceKm: 0 //logic to calculate the km fromaddress to toaddress
                     }
                 })
 
