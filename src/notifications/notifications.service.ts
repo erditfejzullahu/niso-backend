@@ -45,9 +45,9 @@ export class NotificationsService {
 
     async deleteNotification(userId: string, notificationId: string){
         try {
-            const notification = await this.prisma.notification.findUnique({where: {id: userId}});
+            const notification = await this.prisma.notification.findUnique({where: {id: notificationId}});
             if(!notification) throw new NotFoundException("Njoftimi nuk u gjet");
-
+            if(notification.userId !== userId) throw new ForbiddenException("Ju nuk keni te drejte per te kryer kete veprim.")
             await this.prisma.notification.delete({where: {id: notification.id}});
             return {success: true}
         } catch (error) {
