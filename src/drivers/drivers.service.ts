@@ -207,6 +207,7 @@ export class DriversService {
     }
 
     async getRegularClients(userId: string, searchParam?: string | null){
+        
         try {
             const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true}});
             if(!user) throw new NotFoundException("Nuk u gjet ndonje perdorues me kete mjet identifikimi.");
@@ -228,21 +229,23 @@ export class DriversService {
                 having: {passengerId: {_count: {gt: 2}}},
                 orderBy: {_count: {passengerId: "desc"}},
             })
-
+            
+            
+            
             const passengerIds = groups.map((g => g.passengerId));
             if(passengerIds.length === 0) return [];
-
+            
             const passengers = await this.prisma.user.findMany({
                 where: {id: {in: passengerIds}},
                 select: {id: true, fullName: true, image: true, userInformation: {select: {address: true, yourDesiresForRide: true}}}
             })
-
+            
             const countMap = new Map(groups.map(g => [g.passengerId, g._count.passengerId]));
             const result = passengers
-                .map(p => ({...p, ridesWithDriver: countMap.get(p.id) ?? 0}))
-                .sort((a,b) => b.ridesWithDriver - a.ridesWithDriver);
+            .map(p => ({...p, ridesWithDriver: countMap.get(p.id) ?? 0}))
+            .sort((a,b) => b.ridesWithDriver - a.ridesWithDriver);
                 
-            return {success: true, result}
+            return result
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")

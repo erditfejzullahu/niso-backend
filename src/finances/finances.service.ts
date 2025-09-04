@@ -7,6 +7,11 @@ export class FinancesService {
         private readonly prisma: PrismaService
     ){}
 
+    private toFixedNoRound(num: number, decimals: number) {
+        const factor = Math.pow(10, decimals);
+        return Math.floor(num * factor) / factor;
+    }
+
     async getDriverFinances(userId: string) { //pasqyra financat ttua
         try {
             const ridesCompleted = await this.prisma.connectedRide.count({
@@ -57,11 +62,11 @@ export class FinancesService {
             }));
 
             return {
-                totalEarned,
+                totalEarned: this.toFixedNoRound(totalEarned, 2),
                 completedDrives: ridesCompleted,
-                pendingPayments,
-                refundedPayments,
-                averagePerDrive,
+                pendingPayments: this.toFixedNoRound(pendingPayments, 2),
+                refundedPayments: this.toFixedNoRound(refundedPayments, 2),
+                averagePerDrive: this.toFixedNoRound(averagePerDrive, 2),
                 recentPayouts
             }
 

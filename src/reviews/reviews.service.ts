@@ -38,10 +38,10 @@ export class ReviewsService {
             })
 
             const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-            const averateRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+            const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
 
             return {
-                averateRating, 
+                averageRating, 
                 totalReviews: reviews.length,
                 reviews: reviews.map(review => ({
                     id: review.id,
