@@ -9,7 +9,56 @@ export class ReviewsService {
 
     async getAllReviewsByDriver(userId: string) {
         try {
-            
+            const reviews = await this.prisma.reviews.findMany({
+                where: {driverId: userId},
+                select: {
+                    id: true,
+                    comment: true,
+                    rating: true,
+                    createdAt: true,
+                    connectedRide: {
+                        select: {
+                            rideRequest: {
+                                select: {
+                                    price: true,
+                                    distanceKm: true,
+                                    fromAddress: true,
+                                    toAddress: true,
+                                    isUrgent: true,
+                                    createdAt: true,
+                                    updatedAt: true
+                                }
+                            }
+                        }
+                    }
+                },
+                orderBy: {
+                    createdAt: "desc"
+                },
+            })
+
+            const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+            const averateRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+
+            return {
+                averateRating, 
+                totalReviews: reviews.length,
+                reviews: reviews.map(review => ({
+                    id: review.id,
+                    rating: review.rating,
+                    comment: review.comment,
+                    createdAt: review.createdAt,
+                    ride: {
+                        price: review.connectedRide.rideRequest.price,
+                        distanceKm: review.connectedRide.rideRequest.distanceKm,
+                        fromAddress: review.connectedRide.rideRequest.fromAddress,
+                        toAddress: review.connectedRide.rideRequest.toAddress,
+                        isUrgent: review.connectedRide.rideRequest.isUrgent,
+                        updatedAt: review.connectedRide.rideRequest.updatedAt
+                    }
+                }))
+            }
+
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
