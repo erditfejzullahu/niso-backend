@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -118,7 +118,21 @@ export class ReviewsService {
                     }
                 })),
             }
-            
+
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server")
+        }
+    }
+
+    async deleteReviewByPassenger(userId: string, reviewId: string){
+        try {
+            const review = await this.prisma.reviews.findUnique({where: {id: reviewId}});
+            if(!review) throw new NotFoundException("Nuk u gjet vleresimi.");
+            if(review.passengerId !== userId) throw new ForbiddenException("Nuk jeni te lejuar per kryerjen e ketij veprimi.");
+
+            await this.prisma.reviews.delete({where: {id: reviewId}});
+            return {success: true};
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")

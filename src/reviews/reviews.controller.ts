@@ -1,4 +1,4 @@
-import { Controller, Get, Req } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Req } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { Roles } from 'common/decorators/roles.decorator';
 import { Role, User } from '@prisma/client';
@@ -22,5 +22,12 @@ export class ReviewsController {
     async getReviewsByPassenger(@Req() req: Request) {
         const user = req.user as User;
         return await this.reviewsService.getAllReviewsByPassenger(user.id);
+    }
+
+    @Roles(Role.PASSENGER)
+    @Delete('delete-review-passenger/:id')
+    async deleteReviewByPassenger(@Req() req: Request, @Param('id') id: string){
+        const user = req.user as User;
+        return await this.reviewsService.deleteReviewByPassenger(user.id, id)
     }
 }
