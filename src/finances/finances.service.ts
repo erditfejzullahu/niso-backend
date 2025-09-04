@@ -1,4 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { toFixedNoRound } from 'common/utils/toFixed.utils';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -6,11 +7,6 @@ export class FinancesService {
     constructor(
         private readonly prisma: PrismaService
     ){}
-
-    private toFixedNoRound(num: number, decimals: number) {
-        const factor = Math.pow(10, decimals);
-        return Math.floor(num * factor) / factor;
-    }
 
     async getDriverFinances(userId: string) { //pasqyra financat ttua
         try {
@@ -62,11 +58,11 @@ export class FinancesService {
             }));
 
             return {
-                totalEarned: this.toFixedNoRound(totalEarned, 2),
+                totalEarned: toFixedNoRound(totalEarned, 2),
                 completedDrives: ridesCompleted,
-                pendingPayments: this.toFixedNoRound(pendingPayments, 2),
-                refundedPayments: this.toFixedNoRound(refundedPayments, 2),
-                averagePerDrive: this.toFixedNoRound(averagePerDrive, 2),
+                pendingPayments: toFixedNoRound(pendingPayments, 2),
+                refundedPayments: toFixedNoRound(refundedPayments, 2),
+                averagePerDrive: toFixedNoRound(averagePerDrive, 2),
                 recentPayouts
             }
 

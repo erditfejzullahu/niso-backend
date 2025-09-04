@@ -33,9 +33,11 @@ export class DriversService {
                         },
                     ]
             }
+            
             const fixedTarifs = await this.prisma.driverFixedTarifs.findMany({
                 where
             })
+
             return fixedTarifs;
         } catch (error) {
             console.error(error);
