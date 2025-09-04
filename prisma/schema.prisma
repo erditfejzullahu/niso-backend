@@ -232,6 +232,7 @@ model DriverEarning {
 
   @@index([status])
   @@index([paymentDate])
+  @@index([driverId, paymentDate])
 }
 
 model PassengerPayment {
@@ -252,6 +253,7 @@ model PassengerPayment {
 
   @@index([status])
   @@index([paidAt])
+  @@index([passengerId, paidAt])
 }
 
 model PassengerRotation {
