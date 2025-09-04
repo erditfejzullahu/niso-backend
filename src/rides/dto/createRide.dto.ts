@@ -1,6 +1,10 @@
-import { IsDecimal, IsEnum, IsNotEmpty, IsString } from "class-validator";
+import { IsBoolean, IsDecimal, IsEnum, IsNotEmpty, IsString } from "class-validator";
 
 export class CreateNewRideRequestDto {
+
+    @IsBoolean()
+    isUrgent: boolean;
+
     @IsDecimal()
     price: number;
 

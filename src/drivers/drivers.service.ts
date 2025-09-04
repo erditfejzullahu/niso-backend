@@ -128,7 +128,7 @@ export class DriversService {
         }
     }
 
-    async getAvailableRides(filter: GetAvailableRidesDto, pagination: PaginationDto){
+    async getAvailableRides(filter: GetAvailableRidesDto){
         try {
             const whereClause: any = {
                 status: "WAITING"
@@ -166,8 +166,8 @@ export class DriversService {
                 this.prisma.rideRequest.findMany({
                     where: whereClause,
                     orderBy: orderByClause,
-                    skip: pagination.getSkip(),
-                    take: pagination.limit,
+                    skip: filter.getSkip(),
+                    take: filter.limit,
                     select: {
                         id: true,
                         price: true,
@@ -191,8 +191,8 @@ export class DriversService {
                 })
             ])
 
-            const totalPages = Math.ceil(totalCount / pagination.limit);
-            const hasMore = pagination.page < totalPages
+            const totalPages = Math.ceil(totalCount / filter.limit);
+            const hasMore = filter.page < totalPages
 
             // const allRides = {...availableRides, hasMore}
 

@@ -30,9 +30,9 @@ export class DriversController {
 
     @Roles(Role.DRIVER)
     @Get('available-rides')
-    async getAvailableRides(@Req() req: Request, @Query() filterParams: GetAvailableRidesDto, @Query() pagination: PaginationDto){
+    async getAvailableRides(@Req() req: Request, @Query() filterParams: GetAvailableRidesDto){        
         const user = req.user as User;
-        return await this.driverService.getAvailableRides(filterParams, pagination);
+        return await this.driverService.getAvailableRides(filterParams);
     }
 
     @Roles(Role.DRIVER)

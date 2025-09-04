@@ -1,28 +1,39 @@
 import { Type } from "class-transformer";
-import { IsDate, IsIn, IsNumber, IsOptional, Min } from "class-validator";
+import { IsDate, IsEnum, IsNumber, IsOptional, Min } from "class-validator";
+import { PaginationDto } from "utils/pagination.dto";
 
-export class GetAvailableRidesDto {
-    @IsOptional()
-    @IsIn(['oldest', 'latest'])
-    sortOrder: 'oldest' | 'latest' = 'latest';
+export enum SortOrder {
+  OLDEST = 'oldest',
+  LATEST = 'latest',
+}
 
-    @IsOptional()
-    @IsDate()
-    @Type(() => Date)
-    fromDate?: Date | null;
+export enum UrgencyType {
+  URGENT = 'urgent',
+  NORMAL = 'normal',
+}
 
-    @IsOptional()
-    @IsDate()
-    @Type(() => Date)
-    toDate?: Date | null;
+export class GetAvailableRidesDto extends PaginationDto {
+  @IsOptional()
+  @IsEnum(SortOrder)
+  sortOrder: SortOrder = SortOrder.LATEST;
 
-    @IsOptional()
-    @IsIn(['urgent', 'normal'])
-    urgencyType: 'urgent' | 'normal' = 'normal'
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  fromDate?: Date | null;
 
-    @IsOptional()
-    @IsNumber()
-    @Min(0)
-    @Type(() => Number)
-    distanceRange?: number;
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  toDate?: Date | null;
+
+  @IsOptional()
+  @IsEnum(UrgencyType)
+  urgencyType: UrgencyType = UrgencyType.NORMAL;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  distanceRange?: number;
 }
