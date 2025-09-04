@@ -22,4 +22,8 @@ export class FinancesService {
     async getAllPassengerExpensesList(userId: string){
 
     }
+
+    async getSpecificFinancialDetail(userId: string, finId: string){
+        
+    }
 }
