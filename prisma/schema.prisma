@@ -231,6 +231,10 @@ model Reviews {
   rating Int //1-5
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([passengerId])
+  @@index([driverId])
+  // @@index([connectedRideId])
 }
 
 model DriverEarning {

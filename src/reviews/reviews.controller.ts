@@ -15,5 +15,12 @@ export class ReviewsController {
     async getReviewsByDriver(@Req() req: Request){
         const user = req.user as User;
         return await this.reviewsService.getAllReviewsByDriver(user.id);
-    }   
+    }
+
+    @Roles(Role.PASSENGER) //me i shiku pasagjeri rivjus e veta
+    @Get('get-reviews-passenger')
+    async getReviewsByPassenger(@Req() req: Request) {
+        const user = req.user as User;
+        return await this.reviewsService.getAllReviewsByPassenger(user.id);
+    }
 }
