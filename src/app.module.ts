@@ -15,6 +15,7 @@ import { ConversationsModule } from './conversations/conversations.module';
 import { NotificationsController } from './notifications/notifications.controller';
 import { NotificationsModule } from './notifications/notifications.module';
 import { FinancesModule } from './finances/finances.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { FinancesModule } from './finances/finances.module';
     UploadModule,
     ConversationsModule,
     NotificationsModule,
-    FinancesModule
+    FinancesModule,
+    ReviewsModule
   ],
   controllers: [AppController, ConversationsController, NotificationsController],
   providers: [AppService, {provide: APP_GUARD, useClass: JwtAuth}, {provide: APP_GUARD, useClass: RolesGuard}],

@@ -125,6 +125,9 @@ model User {
   passengerConversations Conversations[] @relation("passengerConversations")
   sendedMessages Message[]
 
+  passengerReviews Reviews[] @relation("PassengerReviews")
+  driverReviews Reviews[] @relation("DriverReviews")
+
   rotations          PassengerRotation[]
   notifications      Notification[]
   driverEarnings     DriverEarning[]
@@ -205,6 +208,7 @@ model ConnectedRide {
   status          ConnectedRideStatus @default(WAITING)
   driverEarning   DriverEarning?
   passengerPayment PassengerPayment?
+  review Reviews?
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -213,6 +217,20 @@ model ConnectedRide {
   @@index([status, driverId])
   @@index([status])
   @@index([createdAt])
+}
+
+model Reviews {
+  id String @id @default(uuid())
+  passengerId String
+  passenger User @relation(fields: [passengerId], references: [id], name: "PassengerReviews", onDelete: Cascade)
+  driverId String
+  driver User @relation(fields: [driverId], references: [id], name: "DriverReviews")
+  connectedRideId String @unique
+  connectedRide ConnectedRide @relation(fields: [connectedRideId], references: [id], onDelete: Cascade)
+  comment String?
+  rating Int //1-5
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model DriverEarning {
