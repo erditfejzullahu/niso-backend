@@ -215,6 +215,7 @@ export class PassengersService {
 
             const totalCount = Number(totalCountResult[0]?.count || 0);
             const totalPages = Math.ceil(totalCount / limit);
+            const hasMore = allDriversDto.page < totalPages;
 
             const formatDrivers = drivers.map((driver) => ({
                 id: driver.id,
@@ -233,14 +234,7 @@ export class PassengersService {
 
             return {
                 formatDrivers,
-                pagination: {
-                    page,
-                    limit,
-                    totalCount,
-                    totalPages,
-                    hasNext: page < totalPages,
-                    hasPrev: page > 1
-                }
+                hasMore
             };
         } catch (error) {
             console.error(error);
