@@ -64,22 +64,22 @@ export class RideService {
             const [activeRide, allActiveRides, activeDrivers] = await Promise.all([
                 this.prisma.connectedRide.findFirst({
                     where: {
-                    AND: [
-                        { passengerId: userId },
-                        {
-                        OR: [
-                            { status: "DRIVING" },
-                            { status: "WAITING" }
+                        AND: [
+                            { passengerId: userId },
+                            {
+                            OR: [
+                                { status: "DRIVING" },
+                                { status: "WAITING" }
+                            ]
+                            }
                         ]
-                        }
-                    ]
                     },
                     select: {
-                    driver: {
-                        select: {
-                        fullName: true
-                        }
-                    },
+                        driver: {
+                            select: {
+                            fullName: true
+                            }
+                        },
                     createdAt: true,
                     rideRequest: {
                         select: {
@@ -88,7 +88,9 @@ export class RideService {
                         price: true,
                         distanceKm: true
                         }
-                    }
+                    },
+                    status: true,
+                    id: true
                     }
                 }),
                 this.prisma.connectedRide.count({
@@ -105,23 +107,30 @@ export class RideService {
                     image: string | null;
                     createdAt: Date;
                     carModel: string | null;
+                    user_verified: boolean;
                     carLicensePlates: string | null;
                     average_rating: number;
+                    is_preferred: boolean;
+                    why_preferred: string | null;
                 }>>`
                     SELECT 
                     u.id,
                     u."fullName",
                     u.image,
                     u."createdAt",
+                    u."user_verified",
                     ui."carModel",
                     ui."carLicensePlates",
-                    COALESCE(AVG(r.rating), 0) as average_rating
+                    COALESCE(AVG(r.rating), 0) as average_rating,
+                    CASE WHEN pd."driverId" IS NOT NULL THEN true ELSE false END as is_preferred,
+                    pd."whyPrefered" as why_preferred
                     FROM "User" u
                     LEFT JOIN "UserInformation" ui ON u.id = ui."userId"
                     LEFT JOIN "Reviews" r ON u.id = r."driverId"
+                    LEFT JOIN "PreferredDriver" pd ON u.id = pd."driverId" AND pd."passengerId" = ${userId}
                     WHERE u.role = 'DRIVER'
-                    GROUP BY u.id, ui."carModel", ui."carLicensePlates"
-                    ORDER BY average_rating DESC
+                    GROUP BY u.id, ui."carModel", ui."carLicensePlates", pd."driverId", pd."whyPrefered"
+                    ORDER BY is_preferred DESC, average_rating DESC
                 `
                 ]);
 
@@ -131,11 +140,14 @@ export class RideService {
                 fullName: driver.fullName,
                 image: driver.image,
                 createdAt: driver.createdAt,
+                userVerified: driver.user_verified,
                 carInfo: {
                     model: driver.carModel,
                     licensePlates: driver.carLicensePlates
                 },
-                rating: toFixedNoRound(driver.average_rating, 1)
+                rating: toFixedNoRound(driver.average_rating, 1),
+                isPreferred: driver.is_preferred,
+                whyPreferred: driver.why_preferred
             }));
 
             // Format the active ride data
@@ -149,7 +161,9 @@ export class RideService {
                     toAddress: activeRide.rideRequest.toAddress,
                     price: activeRide.rideRequest.price,
                     distance: activeRide.rideRequest.distanceKm
-                }
+                },
+                status: activeRide.status,
+                id: activeRide.id
             } : null;
 
             // Return structured response
