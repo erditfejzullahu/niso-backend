@@ -223,6 +223,8 @@ export class DriversService {
                     }
                 }
             }
+            console.log(searchParam);
+            
 
             const groups = await this.prisma.connectedRide.groupBy({
                 by: ["passengerId"],
