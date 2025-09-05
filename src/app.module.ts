@@ -16,6 +16,7 @@ import { NotificationsController } from './notifications/notifications.controlle
 import { NotificationsModule } from './notifications/notifications.module';
 import { FinancesModule } from './finances/finances.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { PassengersModule } from './passengers/passengers.module';
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { ReviewsModule } from './reviews/reviews.module';
     ConversationsModule,
     NotificationsModule,
     FinancesModule,
-    ReviewsModule
+    ReviewsModule,
+    PassengersModule
   ],
   controllers: [AppController, ConversationsController, NotificationsController],
   providers: [AppService, {provide: APP_GUARD, useClass: JwtAuth}, {provide: APP_GUARD, useClass: RolesGuard}],

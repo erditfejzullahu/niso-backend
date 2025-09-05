@@ -148,8 +148,8 @@ model UserInformation {
   ID_Card     String[]
   SelfiePhoto String
   address String
-  carModel String?
-  carLicensePlates String?
+  carModel String
+  carLicensePlates String
   yourDesiresForRide String?
   city KosovoCity
   gender Gender

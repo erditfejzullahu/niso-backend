@@ -15,13 +15,6 @@ export class RideController {
     ){}
 
     @Roles(Role.PASSENGER)
-    @Get('passenger-home-data')
-    async getPassengerHomeData(@Req() req: Request){
-        const user = req.user as User;
-        return await this.rideService.getPassengerHomeData(user.id);
-    }
-
-    @Roles(Role.PASSENGER)
     @Post('passenger-create-riderequest')
     async createNewRideRequestByPassenger(@Req() req: Request, @Body() body: CreateNewRideRequestDto){
         const user = req.user as User;
