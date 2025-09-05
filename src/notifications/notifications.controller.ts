@@ -25,6 +25,20 @@ export class NotificationsController {
     }
 
     @Roles(Role.DRIVER, Role.PASSENGER)
+    @Get('get-notification-connected-ride/:id')
+    async getNotificationConnectedRide(@Req() req: Request, @Param('id') id: string){
+        const user = req.user as User;
+        return await this.notificationService.getNotificationConnectedRide(user, id);
+    }
+
+    @Roles(Role.DRIVER, Role.PASSENGER)
+    @Get('get-notification-ride-request/:id')
+    async getNotificationRideRequest(@Req() req: Request, @Param('id') id: string){
+        const user = req.user as User;
+        return await this.notificationService.getNotificationRideRequest(user, id);
+    }
+
+    @Roles(Role.DRIVER, Role.PASSENGER)
     @Delete('delete-notification/:id')
     async deleteNotification(@Req() req: Request, @Param('id') notificationId: string){
         const user = req.user as User;
