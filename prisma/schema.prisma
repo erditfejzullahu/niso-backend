@@ -148,6 +148,8 @@ model UserInformation {
   ID_Card     String[]
   SelfiePhoto String
   address String
+  carModel String?
+  carLicensePlates String?
   yourDesiresForRide String?
   city KosovoCity
   gender Gender
@@ -214,6 +216,7 @@ model ConnectedRide {
   updatedAt       DateTime         @updatedAt
 
   @@index([driverId, passengerId])
+  @@index([passengerId, status])
   @@index([status, driverId])
   @@index([status])
   @@index([createdAt])

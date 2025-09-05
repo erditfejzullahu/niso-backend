@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Param, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import { Role, User } from '@prisma/client';
 import { Roles } from 'common/decorators/roles.decorator';
 import type { Request } from 'express';
@@ -13,6 +13,13 @@ export class RideController {
     constructor(
         private readonly rideService: RideService
     ){}
+
+    @Roles(Role.PASSENGER)
+    @Get('passenger-home-data')
+    async getPassengerHomeData(@Req() req: Request){
+        const user = req.user as User;
+        return await this.rideService.getPassengerHomeData(user.id);
+    }
 
     @Roles(Role.PASSENGER)
     @Post('passenger-create-riderequest')
