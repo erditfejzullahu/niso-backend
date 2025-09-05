@@ -233,7 +233,7 @@ async function main() {
           metadata: JSON.stringify({
             modalAction: true,
             notificationSender: null,
-            navigateAction: null,
+            navigateAction: {connectedRide: connectedRides[0].id},
           }),
         },
       });

@@ -46,15 +46,16 @@ export class NotificationsService {
 
     async getNotificationConnectedRide(user: User, notificationId: string){
         try {
-
+            
             const notification = await this.prisma.notification.findUnique({where: {id: notificationId}, select: {id: true, userId: true, metadata: true}})
             if(!notification || !notification.metadata) throw new NotFoundException("Nuk u gjet njoftimi.");
             const metadata: any = JSON.parse(notification.metadata as string);
-            if(!metadata.connectedRide) throw new BadRequestException("Nuk ka te dhena te mjaftueshme.");
+            
+            if(!metadata.navigateAction.connectedRide) throw new BadRequestException("Nuk ka te dhena te mjaftueshme.");
 
             if(user.role === "DRIVER"){
                 const connectedRide = await this.prisma.connectedRide.findUnique({
-                    where: {id: metadata.connectedRide},
+                    where: {id: metadata.navigateAction.connectedRide},
                     select: {
                         id: true,
                         passenger: {
@@ -80,7 +81,7 @@ export class NotificationsService {
                 return connectedRide;
             }else{
                 const connectedRide = await this.prisma.connectedRide.findUnique({
-                    where: {id: metadata.connectedRide},
+                    where: {id: metadata.navigateAction.connectedRide},
                     select: {
                         id: true,
                         driver: {
@@ -116,11 +117,11 @@ export class NotificationsService {
             const notification = await this.prisma.notification.findUnique({where: {id: notificationId}, select: {id: true, userId: true, metadata: true}})
             if(!notification || !notification.metadata) throw new NotFoundException("Nuk u gjet njoftimi.");
             const metadata: any = JSON.parse(notification.metadata as string);
-            if(!metadata.rideRequest) throw new BadRequestException("Nuk ka te dhena te mjaftueshme.");
+            if(!metadata.navigateAction.rideRequest) throw new BadRequestException("Nuk ka te dhena te mjaftueshme.");
 
             if(user.role === "DRIVER"){
                 const rideRequest = await this.prisma.rideRequest.findUnique({
-                    where: {id: metadata.rideRequest},
+                    where: {id: metadata.navigateAction.rideRequest},
                     select: {
                         id: true,
                         passenger: {
@@ -141,7 +142,7 @@ export class NotificationsService {
                 return rideRequest;
             }else{
                 const rideRequest = await this.prisma.rideRequest.findUnique({
-                    where: {id: metadata.rideRequest},
+                    where: {id: metadata.navigateAction.rideRequest},
                     select: {
                         id: true,
                         driver: {
