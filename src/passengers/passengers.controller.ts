@@ -30,16 +30,9 @@ export class PassengersController {
     //prefered section
     @Roles(Role.PASSENGER)
     @Get('preferred-drivers')
-    async getPreferredDrivers(@Req() req: Request){
+    async getPreferredDrivers(@Req() req: Request, @Query('preferredDrivers') preferred: "add" | "favorites"){
         const user = req.user as User;
-        return await this.passengerService.getPreferredDrivers(user.id);
-    }
-
-    @Roles(Role.PASSENGER)
-    @Get('drivers-driven-with')
-    async getDriversDrivenWith(@Req() req: Request){
-        const user = req.user as User;
-        return await this.passengerService.getDriversDrivenWith(user.id);
+        return await this.passengerService.getPreferredDrivers(user.id, preferred);
     }
 
     @Roles(Role.PASSENGER)

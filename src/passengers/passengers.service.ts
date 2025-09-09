@@ -278,140 +278,137 @@ export class PassengersService {
         }
     }
 
-    async getPreferredDrivers(userId: string){
+    async getPreferredDrivers(userId: string, favoriteDrivers: "add" | "favorites"){
         try {
-            const preferredDrivers = await this.prisma.preferredDriver.findMany({
-                where: {
-                    passengerId: userId
-                },
-                select: {
-                    id: true,
-                    driver: {
-                        select: {
-                            id: true,
-                            fullName: true,
-                            image: true,
-                            user_verified: true,
-                            createdAt: true,
-                            userInformation: {
-                                select: {
-                                    carModel: true,
-                                    carLicensePlates: true
-                                }
-                            },
-                            driverReviews: {
-                                select: {
-                                    rating: true
+            if(favoriteDrivers === "favorites"){
+                const preferredDrivers = await this.prisma.preferredDriver.findMany({
+                    where: {
+                        passengerId: userId
+                    },
+                    select: {
+                        id: true,
+                        driver: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                image: true,
+                                user_verified: true,
+                                createdAt: true,
+                                userInformation: {
+                                    select: {
+                                        carModel: true,
+                                        carLicensePlates: true
+                                    }
                                 },
-                            },
-                        }
-                    },
-                    whyPrefered: true
-                }
-            })
+                                driverReviews: {
+                                    select: {
+                                        rating: true
+                                    },
+                                },
+                            }
+                        },
+                        whyPrefered: true
+                    }
+                })
+    
+                const preferredDriversWithRatings = preferredDrivers.map(preferredDriver => {
+                    const reviews = preferredDriver.driver.driverReviews;
+                    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+                    const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+    
+                    return {
+                        id: preferredDriver.driver.id,
+                        fullName: preferredDriver.driver.fullName,
+                        image: preferredDriver.driver.image,
+                        createdAt: preferredDriver.driver.createdAt,
+                        userVerified: preferredDriver.driver.user_verified,
+                        carInfo: {
+                            model: preferredDriver.driver.userInformation?.carModel,
+                            licensePlates: preferredDriver.driver.userInformation?.carLicensePlates,
+                        },
+                        rating: averageRating,
+                        isPreferred: true,
+                        whyPreferred: preferredDriver.whyPrefered,
+                        preferredId: preferredDriver.id
+                    }
+                })
 
-            const preferredDriversWithRatings = preferredDrivers.map(preferredDriver => {
-                const reviews = preferredDriver.driver.driverReviews;
-                const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-                const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
-
-                return {
-                    id: preferredDriver.driver.id,
-                    fullName: preferredDriver.driver.fullName,
-                    image: preferredDriver.driver.image,
-                    createdAt: preferredDriver.driver.createdAt,
-                    userVerified: preferredDriver.driver.user_verified,
-                    carInfo: {
-                        model: preferredDriver.driver.userInformation?.carModel,
-                        licensePlates: preferredDriver.driver.userInformation?.carLicensePlates,
-                    },
-                    rating: averageRating,
-                    isPreferred: true,
-                    whyPreferred: preferredDriver.whyPrefered,
-                    preferredId: preferredDriver.id
-                }
-            })
-
-            return preferredDriversWithRatings;
-            
-        } catch (error) {
-            console.error(error);
-            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
-        }
-    }
-
-    async getDriversDrivenWith(userId: string){
-        try {
-            const drivers = await this.prisma.connectedRide.findMany({
-                where: {
-                    AND: [
-                        {status: "COMPLETED"},
-                        {passengerId: userId},
-                        {
-                            driver: {
-                                preferredByUsers: {
-                                    none: {
-                                        passengerId: userId
+                return preferredDriversWithRatings;
+            }else if (favoriteDrivers === "add"){
+                const drivers = await this.prisma.connectedRide.findMany({
+                    where: {
+                        AND: [
+                            {status: "COMPLETED"},
+                            {passengerId: userId},
+                            {
+                                driver: {
+                                    preferredByUsers: {
+                                        none: {
+                                            passengerId: userId
+                                        }
                                     }
                                 }
                             }
-                        }
-                    ]
-                },
-                select: {
-                    driver: {
-                        select: {
-                            id: true,
-                            fullName: true,
-                            image: true,
-                            createdAt: true,
-                            user_verified: true,
-                            userInformation: {
-                                select: {
-                                    carModel: true,
-                                    carLicensePlates: true
-                                }
-                            },
-                            driverReviews: {
-                                select: {
-                                    rating: true
-                                }
-                            },
-                            
-                        }
-                    }
-                },
-                distinct: ['driverId']
-            })
-
-            const toAddPreferredDriversWithRatings = drivers.map(driver => {
-                const reviews = driver.driver.driverReviews;
-                const totalRating = reviews.reduce((sum, review) => sum + review.rating ,0)
-                const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
-
-                return {
-                    id: driver.driver.id,
-                    fullName: driver.driver.fullName,
-                    image: driver.driver.image,
-                    createdAt: driver.driver.createdAt,
-                    userVerified: driver.driver.user_verified,
-                    carInfo: {
-                        model: driver.driver.userInformation?.carModel,
-                        licensePlates: driver.driver.userInformation?.carLicensePlates,
+                        ]
                     },
-                    rating: averageRating,
-                    isPreferred: false,
-                    whyPreferred: null,
-                    preferredId: null
-                }
-            })
+                    select: {
+                        driver: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                image: true,
+                                createdAt: true,
+                                user_verified: true,
+                                userInformation: {
+                                    select: {
+                                        carModel: true,
+                                        carLicensePlates: true
+                                    }
+                                },
+                                driverReviews: {
+                                    select: {
+                                        rating: true
+                                    }
+                                },
+                                
+                            }
+                        }
+                    },
+                    distinct: ['driverId']
+                })
 
-            return toAddPreferredDriversWithRatings;
+                const toAddPreferredDriversWithRatings = drivers.map(driver => {
+                    const reviews = driver.driver.driverReviews;
+                    const totalRating = reviews.reduce((sum, review) => sum + review.rating ,0)
+                    const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+
+                    return {
+                        id: driver.driver.id,
+                        fullName: driver.driver.fullName,
+                        image: driver.driver.image,
+                        createdAt: driver.driver.createdAt,
+                        userVerified: driver.driver.user_verified,
+                        carInfo: {
+                            model: driver.driver.userInformation?.carModel,
+                            licensePlates: driver.driver.userInformation?.carLicensePlates,
+                        },
+                        rating: averageRating,
+                        isPreferred: false,
+                        whyPreferred: null,
+                        preferredId: null
+                    }
+                })
+
+                return toAddPreferredDriversWithRatings;
+            }else{
+                throw new BadRequestException("Parametri nuk eshte ne rregull.");
+            }
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
+
 
     async addPreferredDriverByPassenger(userId: string, preferredDto: AddPreferredDriverDto) {
         try {
