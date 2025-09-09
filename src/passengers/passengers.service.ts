@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, InternalServerErrorException } from '@
 import { toFixedNoRound } from 'common/utils/toFixed.utils';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { GetAllDriversDtoFilters } from './dto/getAllDrivers.dto';
+import { sanitizeContent } from 'common/utils/sanitize.utils';
 
 @Injectable()
 export class PassengersService {
@@ -11,11 +12,12 @@ export class PassengersService {
 
     async getPassengerHomeData(userId: string){
         try {
+            const sanitizeUserId = sanitizeContent(userId);
             const [activeRide, allActiveRides, activeDrivers] = await Promise.all([
                 this.prisma.connectedRide.findFirst({
                     where: {
                         AND: [
-                            { passengerId: userId },
+                            { passengerId: sanitizeUserId },
                             {
                             OR: [
                                 { status: "DRIVING" },
@@ -77,7 +79,7 @@ export class PassengersService {
                     FROM "User" u
                     LEFT JOIN "UserInformation" ui ON u.id = ui."userId"
                     LEFT JOIN "Reviews" r ON u.id = r."driverId"
-                    LEFT JOIN "PreferredDriver" pd ON u.id = pd."driverId" AND pd."passengerId" = ${userId}
+                    LEFT JOIN "PreferredDriver" pd ON u.id = pd."driverId" AND pd."passengerId" = ${sanitizeUserId}
                     WHERE u.role = 'DRIVER'
                     GROUP BY u.id, ui."carModel", ui."carLicensePlates", pd."driverId", pd."whyPrefered"
                     ORDER BY is_preferred DESC, average_rating DESC
@@ -131,22 +133,35 @@ export class PassengersService {
         }
     }
 
-    async getAllDrivers(userId: string, allDriversDto: GetAllDriversDtoFilters){
+    async getAllDrivers(userId: string, allDriversDto: GetAllDriversDtoFilters) {
         try {
-            if((allDriversDto.sortBy && !allDriversDto.sortOrder) || (!allDriversDto.sortBy && allDriversDto.sortBy)) throw new BadRequestException("Paraqitni te dhenat filtruese ne menyre te duhur.");
+            if ((allDriversDto.sortBy && !allDriversDto.sortOrder) || (!allDriversDto.sortBy && allDriversDto.sortOrder)) {
+                throw new BadRequestException("Paraqitni te dhenat filtruese ne menyre te duhur.");
+            }
 
             const {
                 page,
                 limit,
                 driverFilters,
                 sortBy,
-                sortOrder
+                sortOrder,
+                searchParam
             } = allDriversDto;
 
-            // Build WHERE clause based on filters
+            // Build WHERE clause with parameterized queries
             let whereClause = `WHERE u.role = 'DRIVER'`;
+            const queryParams: any[] = [];
+            let paramIndex = 0;
+
             if (driverFilters === 'favorite') {
                 whereClause += ` AND pd."driverId" IS NOT NULL`;
+            }
+
+            // Add search parameter filter if provided
+            if (searchParam) {
+                paramIndex++;
+                whereClause += ` AND (u."fullName" ILIKE $${paramIndex} OR ui."carModel" ILIKE $${paramIndex} OR ui."carLicensePlates" ILIKE $${paramIndex})`;
+                queryParams.push(`%${searchParam}%`);
             }
 
             // Build ORDER BY clause based on sort options
@@ -172,18 +187,8 @@ export class PassengersService {
                 orderByClause += ', average_rating DESC';
             }
 
-            const drivers = await this.prisma.$queryRaw<Array<{
-                id: string;
-                fullName: string;
-                image: string | null;
-                createdAt: Date;
-                carModel: string | null;
-                user_verified: boolean;
-                carLicensePlates: string | null;
-                average_rating: number;
-                is_preferred: boolean;
-                why_preferred: string | null;
-            }>>`
+            // Build the main query with proper parameter handling
+            const mainQuery = `
                 SELECT 
                     u.id,
                     u."fullName",
@@ -198,24 +203,51 @@ export class PassengersService {
                 FROM "User" u
                 LEFT JOIN "UserInformation" ui ON u.id = ui."userId"
                 LEFT JOIN "Reviews" r ON u.id = r."driverId"
-                LEFT JOIN "PreferredDriver" pd ON u.id = pd."driverId" AND pd."passengerId" = ${userId}
+                LEFT JOIN "PreferredDriver" pd ON u.id = pd."driverId" AND pd."passengerId" = $${paramIndex + 1}
                 ${whereClause}
                 GROUP BY u.id, ui."carModel", ui."carLicensePlates", pd."driverId", pd."whyPrefered"
                 ${orderByClause}
-                LIMIT ${limit} OFFSET ${allDriversDto.getSkip()}
+                LIMIT $${paramIndex + 2} OFFSET $${paramIndex + 3}
             `;
 
-            // Get total count for pagination metadata
-            const totalCountResult = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+            // Add remaining parameters
+            queryParams.push(userId, limit, allDriversDto.getSkip());
+
+            const drivers = await this.prisma.$queryRawUnsafe<Array<{
+                id: string;
+                fullName: string;
+                image: string | null;
+                createdAt: Date;
+                carModel: string | null;
+                user_verified: boolean;
+                carLicensePlates: string | null;
+                average_rating: number;
+                is_preferred: boolean;
+                why_preferred: string | null;
+            }>>(mainQuery, ...queryParams);
+
+            // Build count query
+            const countQuery = `
                 SELECT COUNT(DISTINCT u.id) as count
                 FROM "User" u
-                LEFT JOIN "PreferredDriver" pd ON u.id = pd."driverId" AND pd."passengerId" = ${userId}
+                LEFT JOIN "UserInformation" ui ON u.id = ui."userId"
+                LEFT JOIN "PreferredDriver" pd ON u.id = pd."driverId" AND pd."passengerId" = $${paramIndex + 1}
                 ${whereClause}
             `;
 
+            // Use only the search params + userId for count query
+            const countParams = searchParam 
+                ? [...queryParams.slice(0, -3), userId] 
+                : [userId];
+            
+            const totalCountResult = await this.prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+                countQuery, 
+                ...countParams
+            );
+
             const totalCount = Number(totalCountResult[0]?.count || 0);
             const totalPages = Math.ceil(totalCount / limit);
-            const hasMore = allDriversDto.page < totalPages;
+            const hasMore = page < totalPages;
 
             const formatDrivers = drivers.map((driver) => ({
                 id: driver.id,
@@ -227,14 +259,17 @@ export class PassengersService {
                     model: driver.carModel,
                     licensePlates: driver.carLicensePlates
                 },
-                rating: driver.average_rating,
+                rating: Number(driver.average_rating),
                 isPreferred: driver.is_preferred,
                 whyPreferred: driver.why_preferred
-            }))
+            }));
 
             return {
-                formatDrivers,
-                hasMore
+                drivers: formatDrivers,
+                hasMore,
+                totalCount,
+                totalPages,
+                currentPage: page
             };
         } catch (error) {
             console.error(error);

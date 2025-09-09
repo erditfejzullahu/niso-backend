@@ -14,6 +14,7 @@ export class AddFixedTarifDto {
 
     @IsString()
     @IsNotEmpty()
+    @Transform(({value}: TransformFnParams) => sanitizeContent(value))
     locationArea: string;
 
     @IsDecimal()
@@ -21,5 +22,6 @@ export class AddFixedTarifDto {
 
     @IsOptional()
     @IsString()
+    @Transform(({value}: TransformFnParams) => sanitizeContent(value))
     description: string;
 }
