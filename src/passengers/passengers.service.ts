@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { toFixedNoRound } from 'common/utils/toFixed.utils';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { GetAllDriversDtoFilters } from './dto/getAllDrivers.dto';
 import { sanitizeContent } from 'common/utils/sanitize.utils';
+import { AddPreferredDriverDto } from './dto/addPreferredDriver.dto';
 
 @Injectable()
 export class PassengersService {
@@ -333,6 +334,122 @@ export class PassengersService {
 
             return preferredDriversWithRatings;
             
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
+
+    async getDriversDrivenWith(userId: string){
+        try {
+            const drivers = await this.prisma.connectedRide.findMany({
+                where: {
+                    AND: [
+                        {status: "COMPLETED"},
+                        {passengerId: userId},
+                        {
+                            driver: {
+                                preferredByUsers: {
+                                    none: {
+                                        passengerId: userId
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                select: {
+                    driver: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            image: true,
+                            createdAt: true,
+                            user_verified: true,
+                            userInformation: {
+                                select: {
+                                    carModel: true,
+                                    carLicensePlates: true
+                                }
+                            },
+                            driverReviews: {
+                                select: {
+                                    rating: true
+                                }
+                            },
+                            
+                        }
+                    }
+                },
+                distinct: ['driverId']
+            })
+
+            const toAddPreferredDriversWithRatings = drivers.map(driver => {
+                const reviews = driver.driver.driverReviews;
+                const totalRating = reviews.reduce((sum, review) => sum + review.rating ,0)
+                const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+
+                return {
+                    id: driver.driver.id,
+                    fullName: driver.driver.fullName,
+                    image: driver.driver.image,
+                    createdAt: driver.driver.createdAt,
+                    userVerified: driver.driver.user_verified,
+                    carInfo: {
+                        model: driver.driver.userInformation?.carModel,
+                        licensePlates: driver.driver.userInformation?.carLicensePlates,
+                    },
+                    rating: averageRating,
+                    isPreferred: false,
+                    whyPreferred: null,
+                    preferredId: null
+                }
+            })
+
+            return toAddPreferredDriversWithRatings;
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
+
+    async addPreferredDriverByPassenger(userId: string, preferredDto: AddPreferredDriverDto) {
+        try {
+            const getSpecificPreferred = await this.prisma.preferredDriver.findFirst({
+                where: {
+                    AND: [
+                        {passengerId: userId},
+                        {driverId: preferredDto.driverId}
+                    ]
+                },
+                select: {id: true}
+            })
+
+            const connectedRide = await this.prisma.connectedRide.findFirst({
+                where: {
+                    AND: [
+                        {passengerId: userId},
+                        {status: "COMPLETED"},
+                        {driverId: preferredDto.driverId}
+                    ]
+                },
+                select: {
+                    id: true
+                }
+            })
+
+            if(getSpecificPreferred) throw new BadRequestException("Ju vecse keni shtuar kete te preferuar.");
+            if(!connectedRide) throw new ForbiddenException("Nuk mund te shtosh kete shofer qe nuk keni udhetuar bashke.");
+            
+            await this.prisma.preferredDriver.create({
+                data: {
+                    passengerId: userId,
+                    driverId: preferredDto.driverId,
+                    whyPrefered: preferredDto.whyPreferred
+                }
+            })
+
+            return {success: true};
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
