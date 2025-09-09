@@ -43,7 +43,7 @@ export class PassengersController {
     }
 
     @Roles(Role.PASSENGER)
-    @Delete('delete-preferred')
+    @Delete('delete-preferred/:id')
     async deletePreferredDriverByPassenger(@Req() req: Request, @Param('id') id: string){
         const user = req.user as User;
         return await this.passengerService.deletePreferredDriverByPassenger(user.id, id);

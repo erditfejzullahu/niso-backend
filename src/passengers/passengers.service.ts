@@ -454,7 +454,7 @@ export class PassengersService {
     }
 
     async deletePreferredDriverByPassenger(userId: string, preferredDriverId: string){
-        try {
+        try {            
             const preferredDriver = await this.prisma.preferredDriver.findUnique({where: {id: preferredDriverId}});
             if(!preferredDriver) throw new NotFoundException("Nuk u gjet shoferi favorit i ruajtur.");
             if(preferredDriver.passengerId !== userId) throw new ForbiddenException("Ju nuk keni drejte per kryerjen e ketij veprimi.");
