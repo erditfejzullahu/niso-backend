@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { toFixedNoRound } from 'common/utils/toFixed.utils';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { GetAllDriversDtoFilters } from './dto/getAllDrivers.dto';
@@ -446,6 +446,21 @@ export class PassengersService {
                 }
             })
 
+            return {success: true};
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
+
+    async deletePreferredDriverByPassenger(userId: string, preferredDriverId: string){
+        try {
+            const preferredDriver = await this.prisma.preferredDriver.findUnique({where: {id: preferredDriverId}});
+            if(!preferredDriver) throw new NotFoundException("Nuk u gjet shoferi favorit i ruajtur.");
+            if(preferredDriver.passengerId !== userId) throw new ForbiddenException("Ju nuk keni drejte per kryerjen e ketij veprimi.");
+            await this.prisma.preferredDriver.delete({
+                where: {id: preferredDriverId}
+            })
             return {success: true};
         } catch (error) {
             console.error(error);

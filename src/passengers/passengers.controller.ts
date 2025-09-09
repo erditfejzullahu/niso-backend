@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { Role, User } from '@prisma/client';
 import { Roles } from 'common/decorators/roles.decorator';
 import type { Request } from 'express';
@@ -42,5 +42,12 @@ export class PassengersController {
         return await this.passengerService.addPreferredDriverByPassenger(user.id, body);
     }
 
-    //refered section
+    @Roles(Role.PASSENGER)
+    @Delete('delete-preferred')
+    async deletePreferredDriverByPassenger(@Req() req: Request, @Param('id') id: string){
+        const user = req.user as User;
+        return await this.passengerService.deletePreferredDriverByPassenger(user.id, id);
+    }
+
+    //prefered section
 }
