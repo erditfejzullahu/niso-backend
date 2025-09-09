@@ -24,4 +24,11 @@ export class PassengersController {
         const user = req.user as User;
         return await this.passengerService.getAllDrivers(user.id, filters)
     }
+
+    @Roles(Role.PASSENGER)
+    @Get('get-preferred-drivers')
+    async getPreferredDrivers(@Req() req: Request){
+        const user = req.user as User;
+        return await this.passengerService.getPreferredDrivers(user.id);
+    }
 }

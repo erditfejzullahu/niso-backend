@@ -276,4 +276,66 @@ export class PassengersService {
             throw new InternalServerErrorException("Dicka shkoi gabim ne server");
         }
     }
+
+    async getPreferredDrivers(userId: string){
+        try {
+            const preferredDrivers = await this.prisma.preferredDriver.findMany({
+                where: {
+                    passengerId: userId
+                },
+                select: {
+                    id: true,
+                    driver: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            image: true,
+                            user_verified: true,
+                            createdAt: true,
+                            userInformation: {
+                                select: {
+                                    carModel: true,
+                                    carLicensePlates: true
+                                }
+                            },
+                            driverReviews: {
+                                select: {
+                                    rating: true
+                                },
+                            },
+                        }
+                    },
+                    whyPrefered: true
+                }
+            })
+
+            const preferredDriversWithRatings = preferredDrivers.map(preferredDriver => {
+                const reviews = preferredDriver.driver.driverReviews;
+                const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+                const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+
+                return {
+                    id: preferredDriver.driver.id,
+                    fullName: preferredDriver.driver.fullName,
+                    image: preferredDriver.driver.image,
+                    createdAt: preferredDriver.driver.createdAt,
+                    userVerified: preferredDriver.driver.user_verified,
+                    carInfo: {
+                        model: preferredDriver.driver.userInformation?.carModel,
+                        licensePlates: preferredDriver.driver.userInformation?.carLicensePlates,
+                    },
+                    rating: averageRating,
+                    isPreferred: true,
+                    whyPreferred: preferredDriver.whyPrefered,
+                    preferredId: preferredDriver.id
+                }
+            })
+
+            return preferredDriversWithRatings;
+            
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
 }
