@@ -141,6 +141,75 @@ model User {
   @@index([role])
 }
 
+enum CarBrand {
+  BMW
+  AUDI
+  MERCEDES
+  VOLKSWAGEN
+  TOYOTA
+  HONDA
+  FORD
+  CHEVROLET
+  NISSAN
+  HYUNDAI
+  KIA
+  VOLVO
+  TESLA
+  FIAT
+  RENAULT
+  PEUGEOT
+  CITROEN
+  SKODA
+  SEAT
+  OPEL
+  MAZDA
+  JEEP
+  PORSCHE
+  LAMBORGHINI
+  FERRARI
+  BENTLEY
+  ROLLS_ROYCE
+  ASTON_MARTIN
+  BUGATTI
+  MCLAREN
+  LAND_ROVER
+  JAGUAR
+  SUZUKI
+  MITSUBISHI
+  SUBARU
+  INFINITI
+  ACURA
+  LEXUS
+  DODGE
+  RAM
+  GMC
+  CHRYSLER
+  LINCOLN
+  CADILLAC
+}
+
+enum CarColor {
+  BARDHE       // White
+  ZEZË         // Black
+  ARGJENDI     // Silver
+  HIRI         // Grey
+  KALTËR       // Blue
+  KUQE         // Red
+  GJELBËR      // Green
+  VERDHË       // Yellow
+  PORTOKALLI   // Orange
+  KAFE         // Brown
+  BEZHË        // Beige
+  AR           // Gold
+  VJOLLCË      // Purple
+  ROZË         // Pink
+  GESHTENJË    // Maroon
+  TURKEZ       // Turquoise
+  GURKALI      // Teal
+  DETI         // Navy
+}
+
+
 model UserInformation {
   id          String   @id @default(uuid())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -148,8 +217,12 @@ model UserInformation {
   ID_Card     String[]
   SelfiePhoto String
   address String
-  carModel String
-  carLicensePlates String
+
+  carModel CarBrand?
+  carYear Int?
+  carColor CarColor?
+  carLicensePlates String?
+
   yourDesiresForRide String?
   city KosovoCity
   gender Gender

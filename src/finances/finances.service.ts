@@ -54,7 +54,7 @@ export class FinancesService {
             const recentPayouts = paidEarnings.slice(0,4).map(earning => ({
                 id: earning.id,
                 date: earning.paymentDate || earning.updatedAt,
-                amount: Number(earning.netEarnings)
+                amount: toFixedNoRound(Number(earning.netEarnings), 2)
             }));
 
             return {
@@ -73,7 +73,66 @@ export class FinancesService {
     }
 
     async getPassengerFinances(userId: string){ //pasqyra financat ttua
-        
+        try {
+            const ridesCompleted = await this.prisma.connectedRide.count({
+                where: {
+                    AND: [
+                        {driverId: userId},
+                        {status: "COMPLETED"}
+                    ]
+                }
+            })
+
+            const payments = await this.prisma.passengerPayment.findMany({
+                where: {passengerId: userId},
+                include: {
+                    ride: {
+                        include: {
+                            rideRequest: true
+                        }
+                    }
+                },
+                orderBy: {
+                    paidAt: "desc"
+                }
+            })
+
+            const paidPayments = payments.filter(payment => payment.status === "PAID");
+            const pendingPayments = payments.filter(payment => payment.status === "PENDING");
+            const refundedPayments = payments.filter(payment => payment.status === "REFUNDED");
+
+            const totalPayments = paidPayments.reduce((sum, payment) => {
+                return sum + Number(payment.totalPaid)
+            }, 0)
+
+            const totalPendings = pendingPayments.reduce((sum, payment) => {
+                return sum + Number(payment.totalPaid)
+            }, 0)
+
+            const totalRefunded = refundedPayments.reduce((sum, payment) => {
+                return sum + Number(payment.totalPaid)
+            }, 0)
+
+            const averagePerDrive = ridesCompleted > 0 ? totalPayments / ridesCompleted : 0;
+            const recentSpents = paidPayments.slice(0,4).map(payment => ({
+                id: payment.id,
+                date: payment.paidAt || payment.updatedAt,
+                amount: toFixedNoRound(Number(payment.totalPaid), 2)
+            }))
+
+            return {
+                totalSpent: toFixedNoRound(totalPayments, 2),
+                completedDrives: ridesCompleted,
+                pendingPayments: toFixedNoRound(totalPendings, 2),
+                refundedPayments: toFixedNoRound(totalRefunded, 2),
+                averagePerDrive: toFixedNoRound(averagePerDrive, 2),
+                recentSpents
+            }
+
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server")
+        }
     }
 
     async getAllDriverEarningList(userId: string){
@@ -122,7 +181,48 @@ export class FinancesService {
     }
 
     async getAllPassengerExpensesList(userId: string){
+        try {
+            const allDriverEarnings = await this.prisma.passengerPayment.findMany({
+                where: {passengerId: userId},
+                select: {
+                    id: true,
+                    amount: true,
+                    surcharge: true,
+                    totalPaid: true,
+                    status: true,
+                    paidAt: true,
+                    createdAt: true,
+                    ride: {
+                        select: {
+                            id: true,
+                            driver: {
+                                select: {
+                                    id: true,
+                                    fullName: true,
+                                    image: true
+                                }
+                            },
+                            status: true,
+                            updatedAt: true,
+                            rideRequest: {
+                                select: {
+                                    price: true,
+                                    distanceKm: true,
+                                    fromAddress: true,
+                                    toAddress: true,
+                                    isUrgent: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            })            
 
+            return allDriverEarnings;
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server")
+        }
     }
 
     async getSpecificFinancialDetail(userId: string, finId: string){

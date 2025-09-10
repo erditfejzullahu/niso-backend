@@ -2,7 +2,7 @@ import { BadRequestException, forwardRef, Inject, Injectable, InternalServerErro
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import bcryptjs from "bcryptjs"
-import { Gender, KosovoCity, User, UserInformation } from '@prisma/client';
+import { CarBrand, CarColor, Gender, KosovoCity, User, UserInformation } from '@prisma/client';
 import { Response } from 'express';
 import { RegisterUserDto } from './dto/registerUser.dto';
 import { UploadService } from 'src/upload/upload.service';
@@ -344,6 +344,7 @@ export class AuthService {
 
                     userImage = newUserImage.data?.url
                 }
+
                 await this.prisma.user.update(
                     {where: {id: userId},
                     include: {
@@ -358,7 +359,11 @@ export class AuthService {
                                 address: updateDto.address,
                                 city: updateDto.city as KosovoCity,
                                 gender: updateDto.gender as Gender,
-                                yourDesiresForRide: user.role === "PASSENGER" ? updateDto.yourDesiresForRide : ""
+                                yourDesiresForRide: user.role === "PASSENGER" ? updateDto.yourDesiresForRide : null,
+                                carColor: user.role === "DRIVER" ? updateDto.carColor as CarColor : null,
+                                carLicensePlates: user.role === "DRIVER" ? updateDto.carPlates : null,
+                                carModel: user.role === "DRIVER" ? updateDto.carModel as CarBrand : null,
+                                carYear: user.role === "DRIVER" ? updateDto.carYear : null  
                             }
                         }
                     }
