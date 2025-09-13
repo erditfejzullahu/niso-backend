@@ -1,8 +1,9 @@
-import { Controller, Get, Param, Req } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req } from '@nestjs/common';
 import { FinancesService } from './finances.service';
 import { Roles } from 'common/decorators/roles.decorator';
 import { Role, User } from '@prisma/client';
 import type { Request } from 'express';
+import { FinancialMirrorDataDto } from './dto/getFinancialData.dto';
 
 @Controller('finances')
 export class FinancesController {
@@ -36,6 +37,13 @@ export class FinancesController {
     async getAllPassengerFinancesList(@Req() req: Request){
         const user = req.user as User;
         return await this.financesService.getAllPassengerExpensesList(user.id);
+    }
+
+    @Roles(Role.PASSENGER, Role.DRIVER)
+    @Get('financial-mirror')
+    async getFinancialMirrorData(@Req() req: Request, @Query() query: FinancialMirrorDataDto) {
+        const user = req.user as User;
+        return await this.financesService.getFinancialMirrorData(user, query);
     }
 
     @Roles(Role.DRIVER, Role.PASSENGER)

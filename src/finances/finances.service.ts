@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { toFixedNoRound } from 'common/utils/toFixed.utils';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { FinancialMirrorDataDto } from './dto/getFinancialData.dto';
 
 @Injectable()
 export class FinancesService {
@@ -310,6 +311,68 @@ export class FinancesService {
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
+        }
+    }
+
+    async getFinancialMirrorData(user: User, financialDto: FinancialMirrorDataDto) {
+        try {
+            if(financialDto.fromDate > financialDto.toDate) throw new BadRequestException("Paraqitni data valide.");
+
+            if(user.role === "DRIVER"){
+                const financialItems = await this.prisma.driverEarning.findMany({
+                    where: {driverId: user.id, createdAt: {
+                        gte: new Date(financialDto.fromDate),
+                        lte: new Date(financialDto.toDate)
+                    }},
+                    select: {
+                        id: true,
+                        createdAt: true,
+                        paymentDate: true,
+                        netEarnings: true,
+                        status: true
+                    },
+                    orderBy: {
+                        createdAt: "desc"
+                    }
+                })
+                const returnItems = financialItems.map((item) => ({
+                    id: item.id,
+                    dateProcessed: item.paymentDate || item.createdAt,
+                    paid: item.netEarnings,
+                    status: item.status
+                }))
+                return returnItems;
+            }else {
+                const financialItems = await this.prisma.passengerPayment.findMany({
+                    where: {
+                        passengerId: user.id,
+                        createdAt: {
+                            gte: new Date(financialDto.fromDate),
+                            lte: new Date(financialDto.toDate)
+                        },
+                    },
+                    select: {
+                        id: true,
+                        createdAt: true,
+                        paidAt: true,
+                        status: true,
+                        totalPaid: true
+                    },
+                    orderBy: {
+                        createdAt: "desc"
+                    }
+                })
+                const returnItems = financialItems.map((item) => ({
+                    id: item.id,
+                    dateProcessed: item.paidAt || item.createdAt,
+                    paid: item.totalPaid,
+                    status: item.status
+                }))
+                return returnItems;
+            }
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
         }
     }
 }
