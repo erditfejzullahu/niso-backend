@@ -335,13 +335,18 @@ export class FinancesService {
                         createdAt: "desc"
                     }
                 })
+
+                const totalEarned = financialItems.reduce((sum, item) => {
+                    return sum + Number(item.netEarnings) 
+                }, 0)
+
                 const returnItems = financialItems.map((item) => ({
                     id: item.id,
                     dateProcessed: item.paymentDate || item.createdAt,
                     paid: item.netEarnings,
-                    status: item.status
+                    status: item.status,
                 }))
-                return returnItems;
+                return {financeItems: returnItems, totalSum: totalEarned};
             }else {
                 const financialItems = await this.prisma.passengerPayment.findMany({
                     where: {
@@ -362,13 +367,16 @@ export class FinancesService {
                         createdAt: "desc"
                     }
                 })
+                const totalSpent = financialItems.reduce((sum, item) => {
+                    return sum + Number(item.totalPaid)
+                }, 0)
                 const returnItems = financialItems.map((item) => ({
                     id: item.id,
                     dateProcessed: item.paidAt || item.createdAt,
                     paid: item.totalPaid,
-                    status: item.status
+                    status: item.status,
                 }))
-                return returnItems;
+                return {financeItems: returnItems, totalSum: totalSpent};
             }
         } catch (error) {
             console.error(error);
