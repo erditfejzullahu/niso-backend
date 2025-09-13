@@ -1,4 +1,5 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { User } from '@prisma/client';
 import { toFixedNoRound } from 'common/utils/toFixed.utils';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -225,7 +226,90 @@ export class FinancesService {
         }
     }
 
-    async getSpecificFinancialDetail(userId: string, finId: string){
-
+    async getSpecificFinancialDetail(user: User, finId: string){
+        try {
+            if(user.role === "DRIVER"){
+                const financeItem = await this.prisma.driverEarning.findUnique({where: {id: finId},
+                select: {
+                    id: true,
+                    amount: true,
+                    fee: true,
+                    netEarnings: true,
+                    status: true,
+                    driverId: true,
+                    paymentDate: true,
+                    createdAt: true,
+                    ride: {
+                        select: {
+                            id: true,
+                            passenger: {
+                                select: {
+                                    id: true,
+                                    fullName: true,
+                                    image: true
+                                }
+                            },
+                            status: true,
+                            updatedAt: true,
+                            rideRequest: {
+                                select: {
+                                    price: true,
+                                    distanceKm: true,
+                                    fromAddress: true,
+                                    toAddress: true,
+                                    isUrgent: true,
+                                }
+                            }
+                        }
+                    }
+                }});
+                if(!financeItem) throw new NotFoundException("Nuk u gjet detaji financiar");
+                if(financeItem.driverId !== user.id) throw new ForbiddenException("Ju nuk keni te drejte per te kryer kete veprim.");
+                return financeItem;
+            }else{
+                const financeItem = await this.prisma.passengerPayment.findUnique({
+                    where: {id: finId},
+                    select: {
+                        id: true,
+                        amount: true,
+                        surcharge: true,
+                        totalPaid: true,
+                        status: true,
+                        passengerId: true,
+                        paidAt: true,
+                        createdAt: true,
+                        ride: {
+                            select: {
+                                id: true,
+                                driver: {
+                                    select: {
+                                        id: true,
+                                        fullName: true,
+                                        image: true
+                                    }
+                                },
+                                status: true,
+                                updatedAt: true,
+                                rideRequest: {
+                                    select: {
+                                        price: true,
+                                        distanceKm: true,
+                                        fromAddress: true,
+                                        toAddress: true,
+                                        isUrgent: true,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+                if(!financeItem) throw new NotFoundException("Nuk u gjet detaji financiar");
+                if(financeItem.passengerId !== user.id) throw new ForbiddenException("Ju nuk keni te drejte per te kryer kete veprim.");
+                return financeItem;
+            }
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server")
+        }
     }
 }

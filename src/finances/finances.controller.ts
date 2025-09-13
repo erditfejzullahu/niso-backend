@@ -42,6 +42,6 @@ export class FinancesController {
     @Get('get-fin-detail/:id')
     async getSpecificFinancialDetail(@Req() req: Request, @Param('id') id: string){
         const user = req.user as User;
-        return await this.financesService.getSpecificFinancialDetail(user.id, id);
+        return await this.financesService.getSpecificFinancialDetail(user, id);
     }
 }
