@@ -13,6 +13,29 @@ export class PassengersService {
         private readonly prisma: PrismaService
     ){}
 
+    async editPassengerRotation(userId: string, rotationId: string, rotationDto: CreateRotationDto){
+        try {
+            const existRotation = await this.prisma.passengerRotation.findUnique({where: {id: rotationId}, select: {id: true, userId: true}});
+            if(!existRotation) throw new NotFoundException("Nuk u gjet rotacioni juaj");
+            if(existRotation.userId !== userId) throw new ForbiddenException("Ju nuk keni leje per te kryer kete veprim.");
+
+            await this.prisma.passengerRotation.update({
+                where: {id: rotationId},
+                data: {
+                    fromAddress: rotationDto.fromAddress,
+                    toAddress: rotationDto.toAddress,
+                    days: rotationDto.days as RotationDays[],
+                    time: rotationDto.pickupTime,
+                }
+            })
+
+            return {success: true};
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server")
+        }
+    }
+
     async getPassengerRotations(userId: string) {
         try {
             const rotations = await this.prisma.passengerRotation.findMany({

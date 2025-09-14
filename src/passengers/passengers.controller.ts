@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { Role, User } from '@prisma/client';
 import { Roles } from 'common/decorators/roles.decorator';
 import type { Request } from 'express';
@@ -55,6 +55,13 @@ export class PassengersController {
     async createRotation(@Req() req: Request, @Body() body: CreateRotationDto){
         const user = req.user as User;
         return await this.passengerService.createRotation(user.id, body);
+    }
+
+    @Roles(Role.PASSENGER)
+    @Patch('update-rotation/:id')
+    async updateRotation(@Req() req: Request, @Param('id') id: string, @Body() body: CreateRotationDto){
+        const user = req.user as User;
+        return await this.passengerService.editPassengerRotation(user.id, id, body);
     }
 
     @Roles(Role.PASSENGER)
