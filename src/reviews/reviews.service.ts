@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateReviewDto } from './dto/createReview.dto';
 
 @Injectable()
 export class ReviewsService {
@@ -133,6 +134,34 @@ export class ReviewsService {
 
             await this.prisma.reviews.delete({where: {id: reviewId}});
             return {success: true};
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server")
+        }
+    }
+
+    async makeReviewAgainstDriver(userId: string, reviewDto: CreateReviewDto){
+        try {
+            const connectedRide = await this.prisma.connectedRide.findUnique({
+                where: {id: reviewDto.connectedRideId}
+            })
+
+            if(!connectedRide) throw new NotFoundException("Nuk u gjet udhetimi.");
+
+            if((connectedRide.passengerId !== userId) || (connectedRide.driverId !== reviewDto.driverId)) throw new ForbiddenException("Ju nuk keni te drejte per kryerjen e ketij veprimi.");
+
+            await this.prisma.reviews.create({
+                data: {
+                    passengerId: userId,
+                    driverId: connectedRide.driverId,
+                    connectedRideId: connectedRide.id,
+                    comment: reviewDto.reviewContent,
+                    rating: reviewDto.rating
+                }
+            })
+
+            return {success: true};
+
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")

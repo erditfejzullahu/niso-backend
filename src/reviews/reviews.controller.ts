@@ -1,14 +1,22 @@
-import { Controller, Delete, Get, Param, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Req } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { Roles } from 'common/decorators/roles.decorator';
 import { Role, User } from '@prisma/client';
 import type { Request } from 'express';
+import { CreateReviewDto } from './dto/createReview.dto';
 
 @Controller('reviews')
 export class ReviewsController {
     constructor(
         private readonly reviewsService: ReviewsService
     ){}
+
+    @Roles(Role.PASSENGER)
+    @Post('make-review')
+    async makeReviewAgainstDriver(@Req() req: Request, @Body() body: CreateReviewDto) {
+        const user = req.user as User;
+        return await this.reviewsService.makeReviewAgainstDriver(user.id, body);
+    }
 
     @Roles(Role.DRIVER)
     @Get('get-reviews-driver')
