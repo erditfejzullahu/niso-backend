@@ -354,14 +354,24 @@ model PassengerPayment {
   @@index([passengerId, paidAt])
 }
 
+enum RotationDays {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 model PassengerRotation {
   id           String       @id @default(uuid())
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId       String
   fromAddress  String
   toAddress    String
-  days         String?     // e.g. ["MON", "WED", "FRI"]
-  time         DateTime?
+  days         RotationDays[]     // e.g. ["MON", "WED", "FRI"]
+  time         DateTime
 
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt

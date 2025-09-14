@@ -5,6 +5,7 @@ import type { Request } from 'express';
 import { PassengersService } from './passengers.service';
 import { GetAllDriversDtoFilters } from './dto/getAllDrivers.dto';
 import { AddPreferredDriverDto } from './dto/addPreferredDriver.dto';
+import { CreateRotationDto } from './dto/createRotation.dto';
 
 @Controller('passengers')
 export class PassengersController {
@@ -43,6 +44,20 @@ export class PassengersController {
     }
 
     @Roles(Role.PASSENGER)
+    @Post('create-rotation')
+    async createRotation(@Req() req: Request, @Body() body: CreateRotationDto){
+        const user = req.user as User;
+        return await this.passengerService.createRotation(user.id, body);
+    }
+
+    @Roles(Role.PASSENGER)
+    @Delete('delete-rotation/:id')
+    async deleteRotation(@Req() req: Request, @Param('id') id: string){
+        const user = req.user as User;
+        return await this.passengerService.deleteRotation(user.id, id);
+    }
+
+    @Roles(Role.PASSENGER)
     @Delete('delete-preferred/:id')
     async deletePreferredDriverByPassenger(@Req() req: Request, @Param('id') id: string){
         const user = req.user as User;
@@ -50,4 +65,5 @@ export class PassengersController {
     }
 
     //prefered section
+
 }

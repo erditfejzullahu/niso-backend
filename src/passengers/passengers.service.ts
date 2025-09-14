@@ -4,12 +4,46 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { GetAllDriversDtoFilters } from './dto/getAllDrivers.dto';
 import { sanitizeContent } from 'common/utils/sanitize.utils';
 import { AddPreferredDriverDto } from './dto/addPreferredDriver.dto';
+import { CreateRotationDto } from './dto/createRotation.dto';
+import { RotationDays } from '@prisma/client';
 
 @Injectable()
 export class PassengersService {
     constructor(
         private readonly prisma: PrismaService
     ){}
+
+    async createRotation(userId: string, rotationDto: CreateRotationDto){
+        try {
+            await this.prisma.passengerRotation.create({
+                data: {
+                    fromAddress: rotationDto.fromAddress,
+                    toAddress: rotationDto.toAddress,
+                    time: rotationDto.pickupTime,
+                    days: rotationDto.days as RotationDays[],
+                    userId
+                }
+            })
+            return {success: true}
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server")
+        }
+    }
+
+    async deleteRotation(userId: string, rotationId: string){
+        try {
+            const rotation = await this.prisma.passengerRotation.findUnique({where: {id: rotationId}, select: {id: true, userId: true}});
+            if(!rotation) throw new NotFoundException("Rotacioni nuk u gjet,");
+            if(rotation.userId !== userId) throw new ForbiddenException("Ju nuk jeni te lejuar per kryerjen e ketij veprimi.");
+
+            await this.prisma.passengerRotation.delete({where: {id: rotationId}});
+            return {success: true};
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
 
     async getPassengerHomeData(userId: string){
         try {
@@ -30,7 +64,8 @@ export class PassengersService {
                     select: {
                         driver: {
                             select: {
-                            fullName: true
+                            fullName: true,
+                            id: true
                             }
                         },
                     createdAt: true,
@@ -106,7 +141,8 @@ export class PassengersService {
             // Format the active ride data
             const formattedActiveRide = activeRide ? {
                 driver: {
-                    fullName: activeRide.driver.fullName
+                    fullName: activeRide.driver.fullName,
+                    driverId: activeRide.driver.id
                 },
                 rideInfo: {
                     createdAt: activeRide.createdAt,
