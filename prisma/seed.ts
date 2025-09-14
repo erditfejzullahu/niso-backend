@@ -263,7 +263,7 @@ async function main() {
         user: { connect: { id: passenger.id } },
         fromAddress: faker.location.streetAddress(),
         toAddress: faker.location.streetAddress(),
-        days: JSON.stringify(['MON', 'WED', 'FRI']),
+        days: ['MONDAY', 'WEDNESDAY', 'FRIDAY'],
         time: faker.date.future(),
       },
     });

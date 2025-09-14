@@ -37,6 +37,13 @@ export class PassengersController {
     }
 
     @Roles(Role.PASSENGER)
+    @Get('passenger-rotations')
+    async getPassengerRotations(@Req() req: Request){
+        const user = req.user as User;
+        return await this.passengerService.getPassengerRotations(user.id);
+    }
+
+    @Roles(Role.PASSENGER)
     @Post('preferred-driver')
     async addPreferredDriverByPassenger(@Req() req: Request, @Body() body: AddPreferredDriverDto){
         const user = req.user as User;

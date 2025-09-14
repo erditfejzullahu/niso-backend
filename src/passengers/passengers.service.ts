@@ -13,6 +13,26 @@ export class PassengersService {
         private readonly prisma: PrismaService
     ){}
 
+    async getPassengerRotations(userId: string) {
+        try {
+            const rotations = await this.prisma.passengerRotation.findMany({
+                where: {userId},
+                select: {
+                    id: true,
+                    fromAddress: true,
+                    toAddress: true,
+                    days: true,
+                    time: true,
+                    createdAt: true
+                }
+            })
+            return rotations;
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server");
+        }
+    }
+
     async createRotation(userId: string, rotationDto: CreateRotationDto){
         try {
             await this.prisma.passengerRotation.create({
