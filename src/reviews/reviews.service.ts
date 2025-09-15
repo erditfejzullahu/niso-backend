@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateReviewDto } from './dto/createReview.dto';
+import { PaginationDto } from 'utils/pagination.dto';
 
 @Injectable()
 export class ReviewsService {
@@ -66,7 +67,7 @@ export class ReviewsService {
         }
     }
 
-    async getAllReviewsByPassenger(userId: string) {
+    async getAllReviewsByPassenger(userId: string, paginationDto: PaginationDto) {
         try {
             const reviews = await this.prisma.reviews.findMany({
                 where: {passengerId: userId},
@@ -100,8 +101,11 @@ export class ReviewsService {
                 },
                 orderBy: {
                     createdAt: "desc"
-                }
+                },
+                skip: paginationDto.getSkip(),
+                take: paginationDto.limit
             })
+            const reviewCount = await this.prisma.reviews.count({where: {passengerId: userId}});
 
             return {
                 reviews: reviews.map(review => ({
@@ -109,6 +113,11 @@ export class ReviewsService {
                     rating: review.rating,
                     comment: review.comment,
                     createdAt: review.createdAt,
+                    driver: {
+                        driverId: review.driver.id,
+                        fullName: review.driver.fullName,
+                        image: review.driver.image
+                    },
                     ride: {
                         price: review.connectedRide.rideRequest.price,
                         distanceKm: review.connectedRide.rideRequest.distanceKm,
@@ -118,6 +127,7 @@ export class ReviewsService {
                         updatedAt: review.connectedRide.rideRequest.updatedAt
                     }
                 })),
+                totalReviews: reviewCount
             }
 
         } catch (error) {

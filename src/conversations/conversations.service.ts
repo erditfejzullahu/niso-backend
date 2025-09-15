@@ -1,13 +1,68 @@
 import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConversationsGatewayServices } from './conversations.gateway-services';
+import { User } from '@prisma/client';
+import { UploadService } from 'src/upload/upload.service';
+import { InitiateSupportTicketDto } from './dto/initiateSupportTicket.dto';
 
 @Injectable()
 export class ConversationsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly gatewayServices: ConversationsGatewayServices,
+        private readonly uploadService: UploadService
     ){}
+
+    async initiateSupportTicket(user: User, initateDto: InitiateSupportTicketDto, files?: {evidences: Express.Multer.File[]}) {
+        try {
+            
+            const getRandomSupport = await this.prisma.user.findMany({
+                where: {role: "SUPPORT"},
+                select: {id: true},
+                orderBy: {id: "desc"}
+            })
+            
+            const randomSupport = getRandomSupport[Math.floor(Math.random() * getRandomSupport.length)];
+            const isDriver = user.role === "DRIVER";
+
+            let mediasToUpload: string[] = []
+
+            if(files){
+                const mediaResults = await this.uploadService.uploadMultipleFiles(files.evidences);
+                if(mediaResults.every(item => item.success) === false) throw new BadRequestException("Problem ne ngarkimin e imazheve te paraqitura.");
+                mediasToUpload = mediaResults.map(item => item.data?.url);
+            }
+
+            const newConversation = await this.prisma.conversations.create({
+                data: {
+                    driverId: isDriver ? user.id : null,
+                    passengerId: !isDriver ? user.id : null,
+                    supportId: randomSupport.id,
+                    rideRequestId: null,
+                    type: "SUPPORT",
+                    subject: initateDto.subject,
+                    isResolved: false,
+                    lastMessageAt: new Date(),
+                    messages: {
+                        create: {
+                            senderId: user.id,
+                            senderRole: isDriver ? "DRIVER" : "PASSENGER",
+                            isRead: false,
+                            content: initateDto.content,
+                            mediaUrls: mediasToUpload
+                        }
+                    }
+                }
+            })
+
+            return {success: true, id: newConversation.id}; //id in case of redirection.
+
+            //logic to notify supporter.
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
 
     // kur osht kry udhetimi e bahet finish prej shoferit ose najqysh me lokacion.
     // ose kur nuk jon marr vesh e kryhet biseda para se mja nis.
@@ -36,6 +91,7 @@ export class ConversationsService {
             })
 
             if(!passenger || (!passenger.rideRequests || passenger.rideRequests.length === 0)) throw new NotFoundException("Udhetimi nuk u gjet");
+            
             const rideConversation = await this.prisma.conversations.findUnique({
                 where: {
                     rideRequestId: passenger.rideRequests[0].id
@@ -46,7 +102,7 @@ export class ConversationsService {
                     driverId: true
                 }
             })
-            if(!rideConversation){
+            if(!rideConversation || !rideConversation.driverId){
                 throw new BadRequestException("Biseda me shoferin nuk u gjet")
             }else{
                 await this.prisma.conversations.update({
@@ -107,7 +163,7 @@ export class ConversationsService {
                     }
                 }}
             );
-            if(!conversation) throw new NotFoundException("Nuk u gjet biseda.");
+            if(!conversation || !conversation.driver) throw new NotFoundException("Nuk u gjet biseda.");
             if(conversation.driver.id !== driverId) throw new ForbiddenException("Ju nuk keni leje per te kryer kete veprim.");
             if(conversation.isResolved) throw new ForbiddenException("Biseda eshte kryer nga ana e pasagjerit.");
             
@@ -238,12 +294,12 @@ export class ConversationsService {
             if(conversationWithMessages.isResolved) throw new ForbiddenException("Biseda ka perfunduar.");
 
             //mark other users messages as read
-            const whoSendedMessagesId = user.id === conversationWithMessages.driverId ? conversationWithMessages.passengerId : conversationWithMessages.driverId;
+            const whoSendedMessagesId = user.id === conversationWithMessages.driverId ? conversationWithMessages.passengerId : user.id === conversationWithMessages.passengerId ? conversationWithMessages.driverId : conversationWithMessages.supportId;
             await this.prisma.message.updateMany({
                 where: {
                     AND: [
                         {conversationId},
-                        {senderId: whoSendedMessagesId}
+                        {senderId: whoSendedMessagesId || user.id}
                     ]
                 },
                 data: {
@@ -251,7 +307,7 @@ export class ConversationsService {
                 }
             })
 
-            await this.gatewayServices.makeReadMessagesCallFromService(whoSendedMessagesId);
+            await this.gatewayServices.makeReadMessagesCallFromService(whoSendedMessagesId || user.id);
 
             return conversationWithMessages;
         } catch (error) {
@@ -274,7 +330,7 @@ export class ConversationsService {
             if(!passenger) throw new NotFoundException("Pasagjeri nuk u gjet.");
 
             const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {id: true, passengerId: true, driverId: true}});
-            if(!conversation) throw new NotFoundException("Nuk u gjet ndonje bisede.");
+            if(!conversation || !conversation.driverId) throw new NotFoundException("Nuk u gjet ndonje bisede.");
             if(conversation.passengerId !== passenger.id) throw new ForbiddenException("Ju nuk keni te drejte per te kryer kete veprim.");
 
             await this.prisma.conversations.update({

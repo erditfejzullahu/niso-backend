@@ -1,15 +1,38 @@
-import { Controller, Get, Param, Patch, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { Role, User } from '@prisma/client';
 import { Roles } from 'common/decorators/roles.decorator';
 import type { Request } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConversationsService } from './conversations.service';
+import { InitiateSupportTicketDto } from './dto/initiateSupportTicket.dto';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 @Controller('conversations')
 export class ConversationsController {
     constructor(
         private readonly conversationsService: ConversationsService
     ){}
+
+    @Roles(Role.PASSENGER, Role.ADMIN)
+    @Post('initiate-support-ticket')
+    @UseInterceptors(FileFieldsInterceptor([
+        {name: 'evidences', maxCount: 5}
+    ]))
+    async initiateSupportTicket(
+        @Req() req: Request,
+        @Body() body: InitiateSupportTicketDto,
+        @UploadedFiles() files: {
+            evidences: Express.Multer.File[]
+        }
+    ){
+        const user = req.user as User;
+        if(files.evidences && files.evidences.length > 5) throw new BadRequestException("Nuk jeni te lejuar te ngarkoni me shume se 5 imazhe.");
+        files.evidences.map((file) => {
+            if(!file.mimetype.startsWith('image/')) throw new BadRequestException("Vetem imazhe jane te lejuara.");
+            if(file.size > 10 * 1024 * 1024) throw new BadRequestException("Fajlli duhet te jete maksimum 10MB.");
+        })
+        return await this.conversationsService.initiateSupportTicket(user, body, files);
+    }
 
     @Roles(Role.PASSENGER)
     @Get('get-conversations-passenger')

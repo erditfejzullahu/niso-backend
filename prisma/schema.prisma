@@ -10,6 +10,8 @@ datasource db {
 enum Role {
   DRIVER
   PASSENGER
+  ADMIN
+  SUPPORT
 }
 
 enum PaymentStatus {
@@ -123,6 +125,7 @@ model User {
 
   driverConversations Conversations[] @relation("driverConversations")
   passengerConversations Conversations[] @relation("passengerConversations")
+  supportConversations Conversations[] @relation("supportConversations")
   sendedMessages Message[]
 
   passengerReviews Reviews[] @relation("PassengerReviews")
@@ -410,14 +413,17 @@ model PreferredDriver {
 
 model Conversations {
   id String @id @default(uuid())
-  driver User @relation(fields: [driverId], references: [id], name: "driverConversations")
-  driverId String
+  driver User? @relation(fields: [driverId], references: [id], name: "driverConversations")
+  driverId String?
 
-  passenger User @relation(fields: [passengerId], references: [id], name: "passengerConversations")
-  passengerId String
+  passenger User? @relation(fields: [passengerId], references: [id], name: "passengerConversations")
+  passengerId String?
 
   rideRequest RideRequest? @relation(fields: [rideRequestId], references: [id], onDelete: SetNull)
   rideRequestId String? @unique
+
+  support User? @relation(fields: [supportId], references: [id], name: "supportConversations")
+  supportId String?
 
   type ConversationType @default(RIDE_RELATED)
 

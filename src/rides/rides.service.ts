@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateNewRideRequestDto } from './dto/createRide.dto';
 import { Conversations, Message, RideRequest, User, UserInformation } from '@prisma/client';
@@ -99,11 +99,12 @@ export class RideService {
             if (findMessageIndex !== messages.length - 1) throw new ForbiddenException("Nuk eshte oferta e fundit.");
             
             if(!message.conversation.rideRequest || !message.conversation.rideRequestId || message.conversation.isResolved) throw new ForbiddenException("Nuk u gjet ndonje kerkese e udhetimit.");
+            if(!message.conversation.driverId || message.conversation.driverId === undefined) throw new BadRequestException('No driver id');
 
             await this.prisma.$transaction(async (prisma) => {
                 const connectedRide = await prisma.connectedRide.create({
                     data: {
-                        driverId: message.conversation.driverId,
+                        driverId: message.conversation.driverId!,
                         passengerId: user.id,
                         rideRequestId: message.conversation.rideRequestId!,
                         status: "WAITING",
@@ -123,7 +124,7 @@ export class RideService {
                 //kjo duhet me ndodh ne production veq kur te mbrrin me lokacion
                 await prisma.driverEarning.create({
                     data: {
-                        driverId: message.conversation.driverId,
+                        driverId: message.conversation.driverId!,
                         rideId: connectedRide.id,
                         amount: ridePriceStr,           // string with 2 decimals
                         fee: nisoFeeStr,                // string with 2 decimals
@@ -135,14 +136,14 @@ export class RideService {
 
                 await prisma.notification.create({
                     data: {
-                        userId: message.conversation.driverId,
+                        userId: message.conversation.driverId!,
                         title: "Njoftim financiar",
                         message: `Ju keni fituar ${netEarningsStr}€. Kontrolloni pasqyrën finananciare tek shiriti poshtë.`,
                         type: "PAYMENT",
                         read: false,
                     }
                 })
-                this.conversationGateway.counterUpdaterToUserAlert(message.conversation.driverId)
+                this.conversationGateway.counterUpdaterToUserAlert(message.conversation.driverId!)
 
                 await prisma.passengerPayment.create({
                     data: {
@@ -222,12 +223,12 @@ export class RideService {
         if (findMessageIndex !== messages.length - 1) throw new ForbiddenException("Nuk eshte oferta e fundit.");
 
         if(!message.conversation.rideRequest || !message.conversation.rideRequestId) throw new ForbiddenException("Nuk u gjet ndonje kerkese e udhetimit.");
-
+        if(!message.conversation.passengerId) throw new BadRequestException("No passenger id");
         await this.prisma.$transaction(async (prisma) => {
             const connectedRide = await prisma.connectedRide.create({
                 data: {
                     driverId: driver.id,
-                    passengerId: message.conversation.passengerId,
+                    passengerId: message.conversation.passengerId!,
                     rideRequestId: message.conversation.rideRequestId!,
                     status: "WAITING"
                 }
@@ -268,7 +269,7 @@ export class RideService {
 
             await prisma.passengerPayment.create({
                 data: {
-                    passengerId: message.conversation.passengerId,
+                    passengerId: message.conversation.passengerId!,
                     rideId: connectedRide.id,
                     amount: ridePriceStr,                   // string with 2 decimals
                     surcharge: paymentFeeStr,               // string with 2 decimals
@@ -281,14 +282,14 @@ export class RideService {
             
             await prisma.notification.create({
                 data: {
-                    userId: message.conversation.passengerId,
+                    userId: message.conversation.passengerId!,
                     title: "Njoftim financiar",
                     message: `Ju keni shpenzuar ${totalPassengerPaid}€. Kontrolloni pasqyrën financiare tek shiriti poshtë.`,
                     type: "PAYMENT",
                     read: false
                 }
             })
-            this.conversationGateway.counterUpdaterToUserAlert(message.conversation.driverId)
+            this.conversationGateway.counterUpdaterToUserAlert(message.conversation.driverId!)
 
         })
 
@@ -317,7 +318,7 @@ export class RideService {
                 include: {rideRequest: true,
                 },
             });
-            if(!conversation) throw new NotFoundException("Biseda nuk u gjet.");
+            if(!conversation || !conversation.driverId) throw new NotFoundException("Biseda nuk u gjet.");
             const newOfferMessage = await this.prisma.message.create({
                 data: {
                     conversationId: conversation.id,
@@ -363,7 +364,7 @@ export class RideService {
                 },
                 include: {rideRequest: true}
             });
-            if(!conversation) throw new NotFoundException("Biseda nuk u gjet.");
+            if(!conversation || !conversation.passengerId) throw new NotFoundException("Biseda nuk u gjet.");
             const newOfferMessage = await this.prisma.message.create({
                 data: {
                     conversationId: conversation.id,

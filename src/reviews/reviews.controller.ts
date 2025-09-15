@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { Roles } from 'common/decorators/roles.decorator';
 import { Role, User } from '@prisma/client';
 import type { Request } from 'express';
 import { CreateReviewDto } from './dto/createReview.dto';
+import { PaginationDto } from 'utils/pagination.dto';
 
 @Controller('reviews')
 export class ReviewsController {
@@ -27,9 +28,9 @@ export class ReviewsController {
 
     @Roles(Role.PASSENGER) //me i shiku pasagjeri rivjus e veta
     @Get('get-reviews-passenger')
-    async getReviewsByPassenger(@Req() req: Request) {
+    async getReviewsByPassenger(@Req() req: Request, @Query() pagination: PaginationDto) {
         const user = req.user as User;
-        return await this.reviewsService.getAllReviewsByPassenger(user.id);
+        return await this.reviewsService.getAllReviewsByPassenger(user.id, pagination);
     }
 
     @Roles(Role.PASSENGER)
