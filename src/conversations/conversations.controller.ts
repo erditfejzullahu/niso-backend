@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, Req, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { Role, User } from '@prisma/client';
 import { Roles } from 'common/decorators/roles.decorator';
 import type { Request } from 'express';
@@ -6,6 +6,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ConversationsService } from './conversations.service';
 import { InitiateSupportTicketDto } from './dto/initiateSupportTicket.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { PaginationDto } from 'utils/pagination.dto';
 
 @Controller('conversations')
 export class ConversationsController {
@@ -72,8 +73,8 @@ export class ConversationsController {
 
     @Roles(Role.DRIVER, Role.PASSENGER)
     @Get('get-messages/:id')
-    async getAllMessagesByConversationId(@Req() req: Request, @Param('id') conversationId: string){
+    async getAllMessagesByConversationId(@Req() req: Request, @Query() pagination: PaginationDto, @Param('id') conversationId: string){
         const user = req.user as User;
-        return await this.conversationsService.getAllMessagesByConversationId(user.id, conversationId);
+        return await this.conversationsService.getAllMessagesByConversationId(user.id, conversationId, pagination);
     }
 }

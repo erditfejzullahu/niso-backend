@@ -24,6 +24,14 @@ export class RideService {
             const user = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true, fullName: true, image: true, userInformation: {select: {city: true}}}});
             if(!user) throw new NotFoundException("Perdoruesi nuk u gjet.");
 
+            const findIfRideCurrentlyAvailable = await this.prisma.rideRequest.count({
+                where: {passengerId, status: "WAITING"},
+            })
+            
+            if(findIfRideCurrentlyAvailable > 0) {
+                throw new BadRequestException("Ju vecse keni kerkese udhetimi aktiv. Nderveproni me te!");
+            }
+
             await this.prisma.$transaction(async (prisma) => {
                 const newRideRequest = await prisma.rideRequest.create({
                     data: {

@@ -427,7 +427,7 @@ model Conversations {
 
   type ConversationType @default(RIDE_RELATED)
 
-  subject String?
+  subject String? //per support
   isResolved Boolean @default(false) //false eshte kur conversation osht aktiv, true kur u kry conversation
   messages Message[]
 

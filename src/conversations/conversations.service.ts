@@ -4,6 +4,7 @@ import { ConversationsGatewayServices } from './conversations.gateway-services';
 import { User } from '@prisma/client';
 import { UploadService } from 'src/upload/upload.service';
 import { InitiateSupportTicketDto } from './dto/initiateSupportTicket.dto';
+import { PaginationDto } from 'utils/pagination.dto';
 
 @Injectable()
 export class ConversationsService {
@@ -126,8 +127,6 @@ export class ConversationsService {
     //a lejohet shoferi mu kyc nbised me passagjerin me mesazhe, nese po shfaqi mesazhet.
     async getIntoConversationWithPassenger(driverId: string, conversationId: string){
         try {
-            const driver = await this.prisma.user.findUnique({where: {id: driverId}, select: {id: true}});
-            if(!driver) throw new NotFoundException("Nuk u gjet ndonje perdorues.");
             const conversation = await this.prisma.conversations.findUnique({
                 where: {id: conversationId},
                 select: {
@@ -189,6 +188,13 @@ export class ConversationsService {
                             image: true
                         }
                     },
+                    support: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            image: true
+                        }
+                    },
                     rideRequest: {
                         select: {
                             id: true,
@@ -203,9 +209,11 @@ export class ConversationsService {
                         },
                         take: 1,
                         select: {
+                            senderId: true,
                             content: true,
                             createdAt: true,
-                            senderRole: true
+                            senderRole: true,
+                            isRead: true
                         }
                     }
                 },
@@ -239,6 +247,13 @@ export class ConversationsService {
                             image: true
                         }
                     },
+                    support: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            image: true,
+                        }
+                    },
                     rideRequest: {
                         select: {
                             id: true,
@@ -253,9 +268,11 @@ export class ConversationsService {
                         },
                         take: 1,
                         select: {
+                            isRead: true,
                             content: true,
                             createdAt: true,
-                            senderRole: true
+                            senderRole: true,
+                            senderId: true,
                         }
                     }
                 },
@@ -272,44 +289,55 @@ export class ConversationsService {
 
     //perdoruesi eshte kyc ne bised.
     //check a jon te lejum dy part.
-    async getAllMessagesByConversationId(userId: string, conversationId: string){
+    async getAllMessagesByConversationId(userId: string, conversationId: string, paginationDto: PaginationDto){
         try {
-            const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true, role: true}});
-            if(!user) throw new NotFoundException("Perdoruesi nuk u gjet.");
 
-            const conversationWithMessages = await this.prisma.conversations.findUnique({
+            const conversation = await this.prisma.conversations.findUnique({
                 where: {id: conversationId},
-                include: {messages: {
-                    orderBy: {
-                        createdAt: "desc",
-                    },
-                    take: 20 //implement pagination TODO:
-                }},
-            })
-
-            if(!conversationWithMessages){
-                throw new NotFoundException("Biseda nuk u gjet.");
-            }
-
-            if(conversationWithMessages.isResolved) throw new ForbiddenException("Biseda ka perfunduar.");
-
-            //mark other users messages as read
-            const whoSendedMessagesId = user.id === conversationWithMessages.driverId ? conversationWithMessages.passengerId : user.id === conversationWithMessages.passengerId ? conversationWithMessages.driverId : conversationWithMessages.supportId;
-            await this.prisma.message.updateMany({
-                where: {
-                    AND: [
-                        {conversationId},
-                        {senderId: whoSendedMessagesId || user.id}
-                    ]
-                },
-                data: {
-                    isRead: true
+                select: {
+                    isResolved: true,
+                    driverId: true,
+                    passengerId: true,
+                    supportId: true
                 }
             })
 
-            await this.gatewayServices.makeReadMessagesCallFromService(whoSendedMessagesId || user.id);
+            
+            if(!conversation){
+                throw new NotFoundException("Biseda nuk u gjet.");
+            }
+            
+            if(conversation.isResolved) throw new ForbiddenException("Biseda ka perfunduar.");
+            
+            //mark other users messages as read
+            const whoSendedMessagesId = userId === conversation.driverId ? conversation.passengerId : userId === conversation.passengerId ? conversation.driverId : conversation.supportId;
+            
+            if(whoSendedMessagesId){
+                await this.prisma.message.updateMany({
+                    where: {
+                        AND: [
+                            {conversationId},
+                            {senderId: whoSendedMessagesId!},
+                            {isRead: false}
+                        ]
+                    },
+                    data: {
+                        isRead: true
+                    }
+                })
+                await this.gatewayServices.makeReadMessagesCallFromService(whoSendedMessagesId);
+            }
 
-            return conversationWithMessages;
+            const messagesWithoutConversations = await this.prisma.message.findMany({
+                where: {conversationId},
+                orderBy: {
+                    createdAt: "desc"
+                },
+                skip: paginationDto.getSkip(),
+                take: paginationDto.limit
+            })
+
+            return messagesWithoutConversations;
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
