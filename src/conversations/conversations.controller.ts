@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, Req, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { Role, User } from '@prisma/client';
 import { Roles } from 'common/decorators/roles.decorator';
 import type { Request } from 'express';
@@ -76,5 +76,12 @@ export class ConversationsController {
     async getAllMessagesByConversationId(@Req() req: Request, @Query() pagination: PaginationDto, @Param('id') conversationId: string){
         const user = req.user as User;
         return await this.conversationsService.getAllMessagesByConversationId(user.id, conversationId, pagination);
+    }
+
+    @Roles(Role.DRIVER, Role.PASSENGER, Role.SUPPORT)
+    @Delete('delete-conversation/:id')
+    async deleteConversation(@Req() req: Request, @Param('id') conversationId: string){
+        const user = req.user as User;
+        return await this.conversationsService.deleteConversationByParticipant(user.id, conversationId);
     }
 }

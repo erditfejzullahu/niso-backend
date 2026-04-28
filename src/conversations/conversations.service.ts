@@ -378,6 +378,36 @@ export class ConversationsService {
         }
     };
 
+    async deleteConversationByParticipant(userId: string, conversationId: string){
+        try {
+            const conversation = await this.prisma.conversations.findUnique({
+                where: { id: conversationId },
+                select: {
+                    id: true,
+                    driverId: true,
+                    passengerId: true,
+                    supportId: true,
+                },
+            });
+            if(!conversation) throw new NotFoundException("Biseda nuk u gjet.");
+            const isParticipant =
+                conversation.driverId === userId ||
+                conversation.passengerId === userId ||
+                conversation.supportId === userId;
+            if(!isParticipant) throw new ForbiddenException("Ju nuk keni leje per te fshire kete bisede.");
+
+            await this.prisma.$transaction([
+                this.prisma.message.deleteMany({ where: { conversationId } }),
+                this.prisma.conversations.delete({ where: { id: conversationId } }),
+            ]);
+            return { success: true };
+        } catch (error) {
+            console.error(error);
+            if(error instanceof NotFoundException || error instanceof ForbiddenException) throw error;
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
+        }
+    }
+
 
 
 
