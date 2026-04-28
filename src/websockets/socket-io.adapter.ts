@@ -11,7 +11,7 @@ export class SocketIoAdapter extends IoAdapter {
 
     createIOServer(port: number, options?: ServerOptions) {
         const cors = {
-            origin: ['http://localhost:5173', 'http://localhost:3000'],
+            origin: true,
             credentials: true,
         } as const;
 

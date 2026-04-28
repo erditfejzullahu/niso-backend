@@ -403,7 +403,8 @@ export class AuthService {
     }
 
 
-    async verifyAsync(token: string){
-        await this.jwtService.verifyAsync(token);
+    /** Returns decoded access-token payload (used by WebSocket auth). */
+    async verifyAsync(token: string) {
+        return this.jwtService.verifyAsync(token);
     }
 }

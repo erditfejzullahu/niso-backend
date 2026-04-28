@@ -6,8 +6,8 @@ import { SendOtherFreeMessageDto } from "./dto/SendOtherFreeMessage";
 import { ConversationsGatewayServices } from "./conversations.gateway-services";
 
 @WebSocketGateway({
-    cors: {origin: ['http://localhost:5173', 'http://localhost:3000'], credentials: true},
-    namespace: '/chat'
+    cors: { origin: true, credentials: true },
+    namespace: '/updates'
 })
 export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer() server!: Server;
@@ -34,28 +34,30 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
             return client.disconnect(true);
         }
 
-        try {
-            const getPayload = await this.gatewayServices.handleUserConnection(token);
-            const userId = String(getPayload.sub);
-            const role = String(getPayload.role);
-            const image = String(getPayload.image);
-            const fullName = String(getPayload.fullName);
-
-            (client as any).user = {id: userId, role: role, image: image, fullName: fullName};
-
-            //enforce singje-device, if previous socket exists, drop it
-            const prev = this.userSocket.get(userId);
-            if(prev && prev !== client.id) {
-                try {this.server.sockets.sockets.get(prev)?.disconnect(true);} catch {}
-            }
-
-            //dmth stored userid and socketid
-            this.userSocket.set(userId, client.id);
-            this.logger.log(`User ${userId} connected with ${client.id}`);
-        } catch (error) {
+        const getPayload = await this.gatewayServices.handleUserConnection(token);
+        if (!getPayload?.sub) {
             this.logger.warn(`JWT verify failed; disconnecting ${client.id}`);
-            client.disconnect(true);
+            return client.disconnect(true);
         }
+
+        const userId = String(getPayload.sub);
+        const role = String(getPayload.role);
+        const image = String(getPayload.profileImage ?? getPayload.image ?? '');
+        const fullName = String(getPayload.fullName ?? '');
+
+        (client as any).user = { id: userId, role, image, fullName };
+
+        const prev = this.userSocket.get(userId);
+        if (prev && prev !== client.id) {
+            try {
+                this.server.sockets.sockets.get(prev)?.disconnect(true);
+            } catch { 
+                console.warn(`Error disconnecting previous socket for user ${userId}`);
+             }
+        }
+
+        this.userSocket.set(userId, client.id);
+        this.logger.log(`User ${userId} connected with ${client.id}`);
     }
 
     async handleDisconnect(client: Socket) {
