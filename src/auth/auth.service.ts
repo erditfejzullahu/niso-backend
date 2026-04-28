@@ -315,11 +315,13 @@ export class AuthService {
         try {
             const user = await this.prisma.user.findUnique({where: {id: userId}, select: {id: true, email: true,image: true}});
             if(!user) throw new NotFoundException("Nuk u gjet perdoruesi.");
-            const publicId = this.uploadService.extractPublicIdFromUrl(user.image);
+            const publicId = this.uploadService.tryExtractPublicIdFromUrl(user.image);
             const newUserImage = await this.uploadService.uploadFile(image, `users/${user.email}`);
             if(!newUserImage.success) throw new BadRequestException('Dicka shkoi gabim ne ngarkimin e fotos stuaj te profilit.');
 
-            await this.uploadService.deleteFile(publicId);
+            if (publicId) {
+                await this.uploadService.deleteFile(publicId);
+            }
             await this.prisma.user.update({where: {id: user.id}, data: {image: newUserImage.data?.url}})
             return {success: true};
         } catch (error) {
@@ -336,11 +338,13 @@ export class AuthService {
             }else{
                 let userImage: string = user.image;
                 if(newImage){
-                    const publicId = this.uploadService.extractPublicIdFromUrl(userImage);
+                    const publicId = this.uploadService.tryExtractPublicIdFromUrl(userImage);
 
                     const newUserImage = await this.uploadService.uploadFile(newImage, `users/${user.email}`);
                     if(!newUserImage.success) throw new BadRequestException('Dicka shkoi gabim ne ngarkimin e fotos stuaj te profilit.');
-                    await this.uploadService.deleteFile(publicId);
+                    if (publicId) {
+                        await this.uploadService.deleteFile(publicId);
+                    }
 
                     userImage = newUserImage.data?.url
                 }

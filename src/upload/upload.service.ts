@@ -7,39 +7,53 @@ export class UploadService {
         private readonly cloudinaryService: CloudinaryService
     ) {}
 
-    extractPublicIdFromUrl(url: string): string {
+    /**
+     * Returns Cloudinary public_id or null if URL is missing, invalid, or not a delivery URL
+     * (e.g. OAuth avatar, placeholder, or non-Cloudinary host).
+     */
+    tryExtractPublicIdFromUrl(url: string | null | undefined): string | null {
+        if (!url || typeof url !== 'string' || !url.trim()) {
+            return null;
+        }
         try {
-        // Remove the Cloudinary base URL and transformations
-        const urlObj = new URL(url);
-        const pathParts = urlObj.pathname.split('/');
-        
-        // Find the index after 'upload'
-        const uploadIndex = pathParts.indexOf('upload');
-        if (uploadIndex === -1) {
+            const urlObj = new URL(url.trim());
+            const marker = '/upload/';
+            const m = urlObj.pathname.indexOf(marker);
+            if (m === -1) {
+                return null;
+            }
+            const afterUpload = urlObj.pathname.slice(m + marker.length);
+            if (!afterUpload) {
+                return null;
+            }
+            const segments = afterUpload.split('/').filter(Boolean);
+            let i = 0;
+            while (i < segments.length && segments[i].includes(',')) {
+                i++;
+            }
+            if (i < segments.length && /^v\d+$/i.test(segments[i])) {
+                i++;
+            }
+            if (i >= segments.length) {
+                return null;
+            }
+            let publicId = segments.slice(i).join('/');
+            const lastDot = publicId.lastIndexOf('.');
+            if (lastDot !== -1) {
+                publicId = publicId.substring(0, lastDot);
+            }
+            return publicId || null;
+        } catch {
+            return null;
+        }
+    }
+
+    extractPublicIdFromUrl(url: string): string {
+        const publicId = this.tryExtractPublicIdFromUrl(url);
+        if (!publicId) {
             throw new Error('Invalid Cloudinary URL');
         }
-        
-        // Get everything after 'upload' but skip the version (v1234567)
-        const relevantParts = pathParts.slice(uploadIndex + 1);
-        
-        // Remove version if present (starts with 'v' followed by digits)
-        if (relevantParts[0]?.startsWith('v') && /^v\d+$/.test(relevantParts[0])) {
-            relevantParts.shift(); // remove version
-        }
-        
-        // Join the remaining parts and remove file extension
-        let publicId = relevantParts.join('/');
-        
-        // Remove file extension
-        const lastDotIndex = publicId.lastIndexOf('.');
-        if (lastDotIndex !== -1) {
-            publicId = publicId.substring(0, lastDotIndex);
-        }
-        
         return publicId;
-        } catch (error) {
-        throw new Error('Could not extract publicId from URL: ' + error.message);
-        }
     }
 
     async uploadFile(file: Express.Multer.File, folder?: string) {
