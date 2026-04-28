@@ -18,7 +18,7 @@ async function bootstrap() {
       enableImplicitConversion: true
     }
   }))
-  app.useWebSocketAdapter(new SocketIoAdapter(app));
+  app.useWebSocketAdapter(new SocketIoAdapter(app) as any);
 
   app.enableCors({
     origin: '*', // your frontend URL
