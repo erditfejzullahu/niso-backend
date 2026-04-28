@@ -328,16 +328,19 @@ export class ConversationsService {
                 await this.gatewayServices.makeReadMessagesCallFromService(whoSendedMessagesId);
             }
 
-            const messagesWithoutConversations = await this.prisma.message.findMany({
+            const limit = paginationDto.limit;
+            const rows = await this.prisma.message.findMany({
                 where: {conversationId},
                 orderBy: {
                     createdAt: "desc"
                 },
                 skip: paginationDto.getSkip(),
-                take: paginationDto.limit
-            })
+                take: limit + 1,
+            });
+            const hasMore = rows.length > limit;
+            const messagesWithoutConversations = hasMore ? rows.slice(0, limit) : rows;
 
-            return messagesWithoutConversations;
+            return { messages: messagesWithoutConversations, hasMore };
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");

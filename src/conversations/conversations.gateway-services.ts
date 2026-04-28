@@ -25,7 +25,7 @@ export class ConversationsGatewayServices{
             const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {driverId: true, passengerId: true, type: true, isResolved: true}});
             if(!conversation) return false;
             if(conversation.type === "RIDE_RELATED" || conversation.isResolved) return false;
-            if((conversation.driverId !== driverId || conversation.driverId !== passengerId) || (conversation.passengerId !== driverId || conversation.passengerId !== passengerId)) return false;
+            if((conversation.driverId !== driverId && conversation.driverId !== passengerId) || (conversation.passengerId !== driverId && conversation.passengerId !== passengerId)) return false;
             return true;
         } catch (error) {
             console.error(error);
@@ -57,42 +57,41 @@ export class ConversationsGatewayServices{
             }
 
             
-            
-            const targetSocketReceiverId = this.gateway.getUserSocket(receiverId);
-            if(targetSocketReceiverId){
-                const message = await this.prisma.message.create({
-                    data: {
-                        conversationId: sendOtherMsgDto.conversationId,
-                        senderId,
-                        senderRole: senderRole as Role,
-                        content: sendOtherMsgDto.content,
-                        isRead: true,
-                        mediaUrls: mediaReceived,
-                    },
-                })
-                this.gateway.server.to(targetSocketReceiverId).emit('newMessage', message)
+            const receiverSocketId = this.gateway.getUserSocket(receiverId);
+            const receiverOnline = !!receiverSocketId;
 
-                this.gateway.server.to(targetSocketReceiverId).emit('conversationAlert', {
+            const message = await this.prisma.message.create({
+                data: {
                     conversationId: sendOtherMsgDto.conversationId,
                     senderId,
-                    preview: sendOtherMsgDto.content.substring(0,50),
+                    senderRole: senderRole as Role,
+                    content: sendOtherMsgDto.content,
+                    isRead: receiverOnline,
+                    mediaUrls: mediaReceived,
+                },
+            });
+
+            if (receiverSocketId) {
+                this.gateway.server.to(receiverSocketId).emit('newMessage', message);
+                this.gateway.server.to(receiverSocketId).emit('conversationAlert', {
+                    conversationId: sendOtherMsgDto.conversationId,
+                    senderId,
+                    preview: sendOtherMsgDto.content.substring(0, 50),
                     sentAt: message.createdAt,
                     senderImage,
-                    senderFullname
-                })
-            }else{
-                await this.prisma.message.create({
-                    data: {
-                        conversationId: sendOtherMsgDto.conversationId,
-                        senderId,
-                        senderRole: senderRole as Role,
-                        content: sendOtherMsgDto.content,
-                        isRead: false,
-                        mediaUrls: mediaReceived,
-                    },
-                })
+                    senderFullname,
+                });
             }
-            await this.prisma.conversations.update({where: {id: sendOtherMsgDto.conversationId}, data: {lastMessageAt: new Date()}});
+
+            const senderSocketId = this.gateway.getUserSocket(senderId);
+            if (senderSocketId) {
+                this.gateway.server.to(senderSocketId).emit('newMessage', message);
+            }
+
+            await this.prisma.conversations.update({
+                where: { id: sendOtherMsgDto.conversationId },
+                data: { lastMessageAt: new Date() },
+            });
 
             // return message;
         }else{

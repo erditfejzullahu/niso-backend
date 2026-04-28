@@ -1,5 +1,5 @@
 import { Transform, TransformFnParams } from "class-transformer";
-import { IsArray, IsBase64, IsString, IsUUID } from "class-validator";
+import { IsArray, IsBase64, IsOptional, IsString, IsUUID } from "class-validator";
 import { sanitizeContent } from "common/utils/sanitize.utils";
 
 export class SendOtherFreeMessageDto {
@@ -16,7 +16,8 @@ export class SendOtherFreeMessageDto {
     @Transform(({value}: TransformFnParams) => sanitizeContent(value))
     content: string;
 
-    @IsBase64()
+    @IsOptional()
     @IsArray()
+    @IsBase64(undefined, { each: true })
     mediaUrls: string[];
 }
