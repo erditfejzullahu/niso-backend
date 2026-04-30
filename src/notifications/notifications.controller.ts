@@ -18,6 +18,13 @@ export class NotificationsController {
     }
 
     @Roles(Role.DRIVER, Role.PASSENGER)
+    @Get('unread-count')
+    async getUnreadNotificationsCount(@Req() req: Request) {
+        const user = req.user as User;
+        return await this.notificationService.getUnreadNotificationsCount(user.id);
+    }
+
+    @Roles(Role.DRIVER, Role.PASSENGER)
     @Patch('read-notifications')
     async makeReadNotifications(@Req() req: Request){
         const user = req.user as User;

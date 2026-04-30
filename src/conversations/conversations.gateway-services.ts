@@ -124,9 +124,18 @@ export class ConversationsGatewayServices{
         const unreadMessages = await this.prisma.message.count({
             where: {
                 AND: [
-                    {senderId: userId},
-                    {isRead: false}
-                ]
+                    { isRead: false },
+                    { senderId: { not: userId } },
+                    {
+                        conversation: {
+                            OR: [
+                                { driverId: userId },
+                                { passengerId: userId },
+                                { supportId: userId },
+                            ],
+                        },
+                    },
+                ],
             }
         })
         const targetUserIdSocket = this.gateway.getUserSocket(userId);

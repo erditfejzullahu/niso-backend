@@ -49,6 +49,13 @@ export class ConversationsController {
         return await this.conversationsService.getAllActiveConversationsByDriver(user.id);
     }
 
+    @Roles(Role.DRIVER, Role.PASSENGER, Role.SUPPORT)
+    @Get('unread-count')
+    async getUnreadMessagesCount(@Req() req: Request) {
+        const user = req.user as User;
+        return await this.conversationsService.getUnreadMessagesCount(user.id);
+    }
+
     @Roles(Role.PASSENGER)
     @Patch('finish-conversation/:id')
     async finishConversationByPassenger(@Req() req: Request, @Param('id') rideRequestId: string){

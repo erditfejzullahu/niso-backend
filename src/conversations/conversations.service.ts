@@ -326,6 +326,7 @@ export class ConversationsService {
                     }
                 })
                 await this.gatewayServices.makeReadMessagesCallFromService(whoSendedMessagesId);
+                await this.gatewayServices.countUnreadMessages(userId);
             }
 
             const limit = paginationDto.limit;
@@ -341,6 +342,32 @@ export class ConversationsService {
             const messagesWithoutConversations = hasMore ? rows.slice(0, limit) : rows;
 
             return { messages: messagesWithoutConversations, hasMore };
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
+        }
+    }
+
+    async getUnreadMessagesCount(userId: string) {
+        try {
+            const unread = await this.prisma.message.count({
+                where: {
+                    AND: [
+                        { isRead: false },
+                        { senderId: { not: userId } },
+                        {
+                            conversation: {
+                                OR: [
+                                    { driverId: userId },
+                                    { passengerId: userId },
+                                    { supportId: userId },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            });
+            return { count: unread };
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");

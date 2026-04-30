@@ -27,6 +27,9 @@ export class NotificationsService {
         try {
             const notifications = await this.prisma.notification.findMany({
                 where: {userId},
+                orderBy: {
+                    createdAt: "desc"
+                },
                 include: {
                     user: {
                         select: {
@@ -42,6 +45,20 @@ export class NotificationsService {
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
+        }
+    }
+
+    async getUnreadNotificationsCount(userId: string) {
+        try {
+            const unread = await this.prisma.notification.count({
+                where: {
+                    AND: [{ userId }, { read: false }],
+                },
+            });
+            return { count: unread };
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server");
         }
     }
 
