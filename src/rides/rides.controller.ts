@@ -7,6 +7,7 @@ import { RideService } from './rides.service';
 import { ConnectRideRequestDto } from './dto/connectRideRequest.dto';
 import { SendPriceOfferDto } from './dto/sendPriceOffer.dto';
 import { FinishRideManuallyByDriverDto } from './dto/finishRideManuallyByDriver.dto';
+import { NotifyPassengerThatDriverReadyDto } from './dto/notifyPassengerThatDriverReady.dto';
 
 @Controller('rides')
 export class RideController {
@@ -19,6 +20,13 @@ export class RideController {
     async createNewRideRequestByPassenger(@Req() req: Request, @Body() body: CreateNewRideRequestDto){
         const user = req.user as User;
         return await this.rideService.createNewRideRequestByPassenger(user.id, body);
+    }
+
+    @Roles(Role.DRIVER)
+    @Patch('notify-passenger-that-driver-is-ready/:id')
+    async notifyPassengerThatDriverIsReady(@Req() req: Request, @Param('id') rideRequestId: string, @Body() body: NotifyPassengerThatDriverReadyDto){
+        const user = req.user as User;
+        return await this.rideService.notifyPassengerThatDriverIsReady(user.id, rideRequestId, body);
     }
 
     @Roles(Role.PASSENGER)

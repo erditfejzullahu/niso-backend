@@ -7,6 +7,7 @@ import { ConnectRideRequestDto } from './dto/connectRideRequest.dto';
 import { FinishRideManuallyByDriverDto } from './dto/finishRideManuallyByDriver.dto';
 import { ConversationsGatewayServices } from 'src/conversations/conversations.gateway-services';
 import { toFixedNoRound } from 'common/utils/toFixed.utils';
+import { NotifyPassengerThatDriverReadyDto } from './dto/notifyPassengerThatDriverReady.dto';
 
 interface MessageInterface extends Message {
     conversation: Conversations & {rideRequest?: RideRequest | null}
@@ -21,7 +22,7 @@ export class RideService {
 
     async createNewRideRequestByPassenger(passengerId: string, rideDto: CreateNewRideRequestDto) {
         try {
-            const user = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true, fullName: true, image: true, userInformation: {select: {city: true}}}});
+            const user = await this.prisma.user.findUnique({where: {id: passengerId, role: "PASSENGER"}, select: {id: true, fullName: true, image: true, userInformation: {select: {city: true}}}});
             if(!user) throw new NotFoundException("Perdoruesi nuk u gjet.");
 
             const findIfRideCurrentlyAvailable = await this.prisma.rideRequest.count({
@@ -57,10 +58,110 @@ export class RideService {
                     }
                 })
     
-                this.conversationGateway.createdRideRequestAlertToDrivers(newRideRequest, user as Partial<User & {userInformation: UserInformation}>, newNotification);
+                Promise.allSettled([
+                    this.conversationGateway.createdRideRequestAlertToDrivers(newRideRequest, user as Partial<User & {userInformation: UserInformation}>, newNotification).catch(error => {
+                        console.error(error);
+                    }),
+                    this.conversationGateway.countUnreadNotifications(user.id)
+                        .catch(error => {
+                            console.error(error);
+                        }),
+                ])
             })
 
             return {success: true}
+        } catch (error) {
+            console.error(error);
+            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+        }
+    }
+
+    async notifyPassengerThatDriverIsReady(driverId: string, rideRequestId: string, body: NotifyPassengerThatDriverReadyDto){
+        try {
+
+            const rideRequest = await this.prisma.rideRequest.findUnique({where: {id: rideRequestId}, select: {passengerId: true, passenger: {select: {fullName: true}}}})
+            if(!rideRequest) throw new NotFoundException("Nuk u gjet kerkese e udhetimit.");
+
+            const driver = await this.prisma.user.findUnique({where: {id: driverId, role: "DRIVER"}, select: {id: true, fullName: true, image: true}})
+            if(!driver) throw new NotFoundException("Nuk u gjet shoferi.");
+
+            await this.prisma.$transaction(async (prisma) => {
+
+                const conversation = await prisma.conversations.findFirst({where: {driverId: driverId, passengerId: rideRequest.passengerId}, select: {id: true}})
+                if(!conversation) {
+                    const newConversation = await prisma.conversations.create({
+                        data: {
+                            driverId: driverId,
+                            passengerId: rideRequest.passengerId,
+                            rideRequestId: rideRequestId,
+                            type: "RIDE_RELATED",
+                            isResolved: false,
+                            lastMessageAt: new Date()
+                        }
+                    })
+                    await prisma.message.create({
+                        data: {
+                            conversationId: newConversation.id,
+                            senderId: driverId,
+                            senderRole: "DRIVER",
+                            content: body.message ?? `Pershendetje ${rideRequest.passenger?.fullName}, shoferi ${driver.fullName} eshte gati per udhetimin. Shiko detajet dhe ndërvepro.`,
+                        }
+                    })
+                } else {
+                    const updatedConversation = await prisma.conversations.update({
+                        where: {id: conversation.id},
+                        data: {
+                            lastMessageAt: new Date(),
+                            rideRequestId: rideRequestId,
+                            type: "RIDE_RELATED",
+                            isResolved: false,
+                        }
+                    })
+                    await prisma.message.create({
+                        data: {
+                            conversationId: updatedConversation.id,
+                            senderId: driverId,
+                            senderRole: "DRIVER",
+                            content: body.message ?? `Pershendetje ${rideRequest.passenger?.fullName}, shoferi ${driver.fullName} eshte gati per udhetimin. Shiko detajet dhe ndërvepro.`,
+                        }
+                    })
+                }
+
+                await prisma.notification.create({
+                    data: {
+                        userId: rideRequest.passengerId,
+                        title: "Njoftim mbi udhëtim",
+                        message: `Shoferi ${driver.fullName} sapo shprehi gadishmerine per udhetimin. Shiko detajet dhe ndërvepro.`,
+                        type: "RIDE_UPDATE",
+                        read: false,
+                        metadata: JSON.stringify({modalAction: false, notificationSender: driver, navigateAction: {rideRequestId: rideRequestId, conversationId: conversation?.id ?? null}})
+                    }
+                })
+
+                await prisma.notification.create({
+                    data: {
+                        userId: driverId,
+                        title: "Njoftim mbi udhëtim",
+                        message: `Ju sapo shprehet gadishmerine per udhetimin. Shiko detajet dhe ndërvepro.`,
+                        type: "RIDE_UPDATE",
+                        read: false,
+                        metadata: JSON.stringify({modalAction: true, navigateAction: {rideRequestId: rideRequestId, conversationId: conversation?.id ?? null}})
+                    }
+                })
+
+                Promise.allSettled([
+                    this.conversationGateway.countUnreadMessages(rideRequest.passengerId).catch(error => {
+                        console.error(error);
+                    }),
+                    this.conversationGateway.countUnreadNotifications(driverId).catch(error => {
+                        console.error(error);
+                    }),
+                    this.conversationGateway.countUnreadNotifications(rideRequest.passengerId).catch(error => {
+                        console.error(error);
+                    }),
+                ])
+            })
+
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
@@ -72,7 +173,7 @@ export class RideService {
     //dmth klikohet butoni prano nga pasagjeri
     async connectRideRequestByPassenger(rideDto: ConnectRideRequestDto){
         try {
-            const user = await this.prisma.user.findUnique({where: {id: rideDto.passengerId}, select: {id: true}});
+            const user = await this.prisma.user.findUnique({where: {id: rideDto.passengerId, role: "PASSENGER"}, select: {id: true}});
             if(!user) throw new NotFoundException("Nuk u gjet ndonje perdorues.");
             const messages = await this.prisma.message.findMany(
             {
@@ -195,7 +296,7 @@ export class RideService {
     //dmth klikohet butoni prano nga shoferi
     async connectRideRequestByDriver(rideDto: ConnectRideRequestDto){
         const driver = await this.prisma.user.findUnique({
-            where: {id: rideDto.driverId},
+            where: {id: rideDto.driverId, role: "DRIVER"},
             select: {id: true}
         })
         if(!driver) throw new NotFoundException("Nuk u gjet ndonje shofer.");
@@ -312,7 +413,7 @@ export class RideService {
     //passagjeri dergon oferten e qmimit te tij per me kundershtu qmimin e shoferit(qe shoferi e ka dergu me kundershtu qmimin e pasagjerit)
     async sendPriceOfferFromPassengerToDriver(offerDto: SendPriceOfferDto){
         try {
-            const passenger = await this.prisma.user.findUnique({where: {id: offerDto.passengerId}, select: {id: true, role: true}});
+            const passenger = await this.prisma.user.findUnique({where: {id: offerDto.passengerId, role: "PASSENGER"}, select: {id: true, role: true}});
             if(!passenger) throw new NotFoundException("Nuk u gjet pasagjeri.");
             
             const conversation = await this.prisma.conversations.findFirst({
@@ -359,7 +460,7 @@ export class RideService {
     //shoferi dergon oferten e qmimit te tij per me kundershtu qmimin e pasagjerit(qe pasagjeri e ka dergu me kundershtu qmimin e pasagjerit, ose qmimin fillestar te udhetimit)
     async sendPriceOfferFromDriverToPassenger(offerDto: SendPriceOfferDto){
         try {
-            const driver = await this.prisma.user.findUnique({where: {id: offerDto.driverId}, select: {id: true, role: true}});
+            const driver = await this.prisma.user.findUnique({where: {id: offerDto.driverId, role: "DRIVER"}, select: {id: true, role: true}});
             if(!driver) throw new NotFoundException("Nuk u gjet pasagjeri.");
 
             const conversation = await this.prisma.conversations.findFirst({
@@ -405,7 +506,7 @@ export class RideService {
     //complete ride by driver
     async completeRideManuallyByDriver(driverId: string, rideDto: FinishRideManuallyByDriverDto){
         try {
-            const driver = await this.prisma.user.findUnique({where:{id: driverId}, select: {id: true}});
+            const driver = await this.prisma.user.findUnique({where:{id: driverId, role: "DRIVER"}, select: {id: true}});
             if(!driver) throw new NotFoundException("Nuk u gjet shoferi.");
 
             const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: rideDto.connectedRideId}, include: {rideRequest: true, driver: {select: {id: true, fullName: true, image:true}}}});
@@ -486,7 +587,7 @@ export class RideService {
     //cancel ride by passenger
     async cancelRideManuallyByPassenger(passengerId: string, connectedRideId: string){
         try {
-            const passenger = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}})
+            const passenger = await this.prisma.user.findUnique({where: {id: passengerId, role: "PASSENGER"}, select: {id: true}})
             if(!passenger) throw new NotFoundException("Nuk u gjet pasagjeri.");
 
             const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: connectedRideId}, include: {rideRequest: true, passenger: {select: {id: true, fullName: true, image: true}}}});
@@ -531,7 +632,7 @@ export class RideService {
 
     //start ride by driver when driver and passenger gets in car to drive
     async startRideManuallyByDriver(driverId: string, connectedRideId: string){
-        const driver = await this.prisma.user.findUnique({where: {id: driverId}, select: {id: true, fullName: true}});
+        const driver = await this.prisma.user.findUnique({where: {id: driverId, role: "DRIVER"}, select: {id: true, fullName: true}});
         if(!driver) throw new NotFoundException("Nuk u gjet shoferi.");
         const connectedRide = await this.prisma.connectedRide.findUnique({where: {id: connectedRideId}, include: {rideRequest: true, passenger: {select: {fullName: true, id: true}}}});
         if(!connectedRide) throw new NotFoundException("Nuk u gjet udhetimi.");

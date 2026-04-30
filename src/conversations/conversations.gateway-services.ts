@@ -103,6 +103,46 @@ export class ConversationsGatewayServices{
         }
     }
 
+    //fire this up whenever new notifications are created and listen to it in front
+    public async countUnreadNotifications(userId: string){
+        const unreadNotifications = await this.prisma.notification.count({
+            where: {
+                AND: [
+                    {userId},
+                    {read: false}
+                ]
+            }
+        })
+        const targetUserIdSocket = this.gateway.getUserSocket(userId);
+        if(targetUserIdSocket){
+            this.gateway.server.to(targetUserIdSocket).emit('unreadNotificationsCounter', unreadNotifications);
+        }
+    }
+
+    //fire this up whenever new messages are created and listen to it in front
+    public async countUnreadMessages(userId: string){
+        const unreadMessages = await this.prisma.message.count({
+            where: {
+                AND: [
+                    {senderId: userId},
+                    {isRead: false}
+                ]
+            }
+        })
+        const targetUserIdSocket = this.gateway.getUserSocket(userId);
+        if(targetUserIdSocket){
+            this.gateway.server.to(targetUserIdSocket).emit('unreadMessagesCounter', unreadMessages);
+        }
+    }
+
+    //notify passenger that driver is ready(notifyPassengerThatDriverIsReady)
+    public async notifyPassengerThatDriverIsReady(passengerId: string, conversationId: string){
+        const targetPassengerSocketId = this.gateway.getUserSocket(passengerId);
+        if(targetPassengerSocketId){
+            this.gateway.server.to(targetPassengerSocketId).emit('passengerNotifiedThatDriverIsReady', {conversationId});
+        }
+    }
+
     //(contactDriverForDifferentReason)
     //contactDriverForDifferentReason helper function
     //for lost items, chatting or smth
@@ -230,6 +270,7 @@ export class ConversationsGatewayServices{
     }
 
 
+    //OLD OR NOT USED ANYMORE??
     //notification counter updater alert to user
     public async counterUpdaterToUserAlert(userId: string, socketId?: string | null,){
         const notificationCounter = await this.prisma.notification.count({
