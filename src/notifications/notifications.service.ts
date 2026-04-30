@@ -1,12 +1,13 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
-import { ConversationsGateway } from 'src/conversations/conversations.gateway';
+import { ConversationsGatewayServices } from 'src/conversations/conversations.gateway-services';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class NotificationsService {
     constructor(
         private readonly prisma: PrismaService,
+        private readonly conversationGateway: ConversationsGatewayServices
     ){}
 
     async getNotificationById(userId: string, notificationId: string){
@@ -175,6 +176,9 @@ export class NotificationsService {
             if(!notification) throw new NotFoundException("Njoftimi nuk u gjet");
             if(notification.userId !== userId) throw new ForbiddenException("Ju nuk keni te drejte per te kryer kete veprim.")
             await this.prisma.notification.delete({where: {id: notification.id}});
+            this.conversationGateway.countUnreadNotifications(userId).catch(error => {
+                console.error(error);
+            });
             return {success: true}
         } catch (error) {
             console.error(error);
@@ -185,6 +189,9 @@ export class NotificationsService {
     async makeReadNotifications(userId: string){
         try {
             await this.prisma.notification.updateMany({where: {userId}, data: {read: true}})
+            this.conversationGateway.countUnreadNotifications(userId).catch(error => {
+                console.error(error);
+            });
             return {success: true}
         } catch (error) {
             console.error(error);
