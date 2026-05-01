@@ -4,7 +4,6 @@ import { ConversationsGatewayServices } from './conversations.gateway-services';
 import { User } from '@prisma/client';
 import { UploadService } from 'src/upload/upload.service';
 import { InitiateSupportTicketDto } from './dto/initiateSupportTicket.dto';
-import { PaginationDto } from 'utils/pagination.dto';
 
 @Injectable()
 export class ConversationsService {
@@ -332,7 +331,11 @@ export class ConversationsService {
 
     //perdoruesi eshte kyc ne bised.
     //check a jon te lejum dy part.
-    async getAllMessagesByConversationId(userId: string, conversationId: string, paginationDto: PaginationDto){
+    async getAllMessagesByConversationId(
+        userId: string,
+        conversationId: string,
+        options?: { cursorId?: string; limit?: number },
+    ){
         try {
 
             const conversation = await this.prisma.conversations.findUnique({
@@ -355,6 +358,7 @@ export class ConversationsService {
             //mark other users messages as read
             const whoSendedMessagesId = userId === conversation.driverId ? conversation.passengerId : userId === conversation.passengerId ? conversation.driverId : conversation.supportId;
             
+            //this needs to be in queue.
             if(whoSendedMessagesId){
                 await this.prisma.message.updateMany({
                     where: {
@@ -368,17 +372,32 @@ export class ConversationsService {
                         isRead: true
                     }
                 })
-                await this.gatewayServices.makeReadMessagesCallFromService(whoSendedMessagesId);
-                await this.gatewayServices.countUnreadMessages(userId);
+                this.gatewayServices.makeReadMessagesCallFromService(whoSendedMessagesId).catch(error => {
+                    console.error(error);
+                });
+                this.gatewayServices.countUnreadMessages(userId).catch(error => {
+                    console.error(error);
+                });
             }
 
-            const limit = paginationDto.limit;
+            const limit = Math.min(100, Math.max(1, options?.limit ?? 10));
+            const cursorId = options?.cursorId?.trim() || undefined;
+
+            if (cursorId) {
+                const cursorRow = await this.prisma.message.findFirst({
+                    where: { id: cursorId, conversationId },
+                    select: { id: true },
+                });
+                if (!cursorRow) {
+                    throw new BadRequestException('Kursor i pavlefshëm për faqosje.');
+                }
+            }
+
             const rows = await this.prisma.message.findMany({
                 where: {conversationId},
-                orderBy: {
-                    createdAt: "desc"
-                },
-                skip: paginationDto.getSkip(),
+                orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+                skip: cursorId ? 1 : 0,
+                ...(cursorId ? { cursor: { id: cursorId } } : {}),
                 take: limit + 1,
             });
             const hasMore = rows.length > limit;
@@ -387,6 +406,13 @@ export class ConversationsService {
             return { messages: messagesWithoutConversations, hasMore };
         } catch (error) {
             console.error(error);
+            if (
+                error instanceof BadRequestException ||
+                error instanceof ForbiddenException ||
+                error instanceof NotFoundException
+            ) {
+                throw error;
+            }
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
         }
     }

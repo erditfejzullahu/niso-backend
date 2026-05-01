@@ -6,7 +6,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ConversationsService } from './conversations.service';
 import { InitiateSupportTicketDto } from './dto/initiateSupportTicket.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { PaginationDto } from 'utils/pagination.dto';
 
 @Controller('conversations')
 export class ConversationsController {
@@ -98,9 +97,19 @@ export class ConversationsController {
 
     @Roles(Role.DRIVER, Role.PASSENGER)
     @Get('get-messages/:id')
-    async getAllMessagesByConversationId(@Req() req: Request, @Query() pagination: PaginationDto, @Param('id') conversationId: string){
+    async getAllMessagesByConversationId(
+        @Req() req: Request,
+        @Query('cursor') cursor: string | undefined,
+        @Query('limit') limitRaw: string | undefined,
+        @Param('id') conversationId: string,
+    ){
         const user = req.user as User;
-        return await this.conversationsService.getAllMessagesByConversationId(user.id, conversationId, pagination);
+        const parsed = limitRaw != null ? Number.parseInt(limitRaw, 10) : NaN;
+        const limit = Number.isFinite(parsed) ? parsed : 10;
+        return await this.conversationsService.getAllMessagesByConversationId(user.id, conversationId, {
+            cursorId: cursor,
+            limit,
+        });
     }
 
     @Roles(Role.DRIVER, Role.PASSENGER, Role.SUPPORT)
