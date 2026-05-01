@@ -14,6 +14,78 @@ export class ConversationsService {
         private readonly uploadService: UploadService
     ){}
 
+    private readonly conversationsListIncludePassenger = {
+        driver: {
+            select: {
+                id: true,
+                fullName: true,
+                image: true,
+            },
+        },
+        support: {
+            select: {
+                id: true,
+                fullName: true,
+                image: true,
+            },
+        },
+        rideRequest: {
+            select: {
+                id: true,
+                fromAddress: true,
+                toAddress: true,
+                createdAt: true,
+            },
+        },
+        messages: {
+            orderBy: { createdAt: 'desc' as const },
+            take: 1,
+            select: {
+                senderId: true,
+                content: true,
+                createdAt: true,
+                senderRole: true,
+                isRead: true,
+            },
+        },
+    } as const;
+
+    private readonly conversationsListIncludeDriver = {
+        passenger: {
+            select: {
+                id: true,
+                fullName: true,
+                image: true,
+            },
+        },
+        support: {
+            select: {
+                id: true,
+                fullName: true,
+                image: true,
+            },
+        },
+        rideRequest: {
+            select: {
+                id: true,
+                fromAddress: true,
+                toAddress: true,
+                createdAt: true,
+            },
+        },
+        messages: {
+            orderBy: { createdAt: 'desc' as const },
+            take: 1,
+            select: {
+                isRead: true,
+                content: true,
+                createdAt: true,
+                senderRole: true,
+                senderId: true,
+            },
+        },
+    } as const;
+
     async initiateSupportTicket(user: User, initateDto: InitiateSupportTicketDto, files?: {evidences: Express.Multer.File[]}) {
         try {
             
@@ -175,115 +247,86 @@ export class ConversationsService {
 
     
 
-    //merri krejt bisedat per me i shfaq te mesazhet e pasagjerit.
-    async getAllConversationsByPassenger(passengerId: string){
+    //merri krejt bisedat per me i shfaq te mesazhet e pasagjerit
+    /** Cursor is the conversation `id` after ordering by lastMessageAt desc, id desc. */
+    async getAllConversationsByPassenger(
+        passengerId: string,
+        options?: { cursorId?: string; limit?: number },
+    ) {
         try {
-            const conversations = await this.prisma.conversations.findMany({
-                where: {passengerId},
-                include: {
-                    driver: {
-                        select: {
-                            id: true,
-                            fullName: true,
-                            image: true
-                        }
-                    },
-                    support: {
-                        select: {
-                            id: true,
-                            fullName: true,
-                            image: true
-                        }
-                    },
-                    rideRequest: {
-                        select: {
-                            id: true,
-                            fromAddress: true,
-                            toAddress: true,
-                            createdAt: true,
-                        },
-                    },
-                    messages: {
-                        orderBy: {
-                            createdAt: "desc",
-                        },
-                        take: 1,
-                        select: {
-                            senderId: true,
-                            content: true,
-                            createdAt: true,
-                            senderRole: true,
-                            isRead: true
-                        }
-                    }
-                },
-                orderBy: {
-                    lastMessageAt: "desc"
-                }
-            })
+            const limit = Math.min(50, Math.max(1, options?.limit ?? 20));
+            const cursorId = options?.cursorId?.trim() || undefined;
 
-            return conversations;
+            if (cursorId) {
+                const cursorRow = await this.prisma.conversations.findFirst({
+                    where: { id: cursorId, passengerId },
+                    select: { id: true },
+                });
+                if (!cursorRow) {
+                    throw new BadRequestException('Kursor i pavlefshëm për faqosje.');
+                }
+            }
+
+            const conversations = await this.prisma.conversations.findMany({
+                where: { passengerId },
+                include: this.conversationsListIncludePassenger,
+                orderBy: [{ lastMessageAt: 'desc' }, { id: 'desc' }],
+                take: limit + 1,
+                skip: cursorId ? 1 : 0,
+                ...(cursorId ? { cursor: { id: cursorId } } : {}),
+            });
+
+            const hasMore = conversations.length > limit;
+            const data = hasMore ? conversations.slice(0, limit) : conversations;
+            return { data, hasMore };
         } catch (error) {
             console.error(error);
-            throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
+            if (error instanceof BadRequestException) throw error;
+            throw new InternalServerErrorException('Dicka shkoi gabim ne server.');
         }
     }
 
-    //merri krejt bisedat per me i shfaq te mesazhet e shfoerit.
-    async getAllActiveConversationsByDriver(driverId: string){
+    //merri krejt bisedat per me i shfaq te mesazhet e shoferit.
+    async getAllActiveConversationsByDriver(
+        driverId: string,
+        options?: { cursorId?: string; limit?: number },
+    ) {
         try {
+            const limit = Math.min(50, Math.max(1, options?.limit ?? 20));
+            const cursorId = options?.cursorId?.trim() || undefined;
+
+            if (cursorId) {
+                const cursorRow = await this.prisma.conversations.findFirst({
+                    where: {
+                        id: cursorId,
+                        driverId,
+                        isResolved: false,
+                    },
+                    select: { id: true },
+                });
+                if (!cursorRow) {
+                    throw new BadRequestException('Kursor i pavlefshëm për faqosje.');
+                }
+            }
+
             const conversations = await this.prisma.conversations.findMany({
                 where: {
-                    AND: [
-                        {driverId},
-                        {isResolved: false}
-                    ]
+                    AND: [{ driverId }, { isResolved: false }],
                 },
-                include: {
-                    passenger: {
-                        select: {
-                            id: true,
-                            fullName: true,
-                            image: true
-                        }
-                    },
-                    support: {
-                        select: {
-                            id: true,
-                            fullName: true,
-                            image: true,
-                        }
-                    },
-                    rideRequest: {
-                        select: {
-                            id: true,
-                            fromAddress: true,
-                            toAddress: true,
-                            createdAt: true
-                        }
-                    },
-                    messages: {
-                        orderBy: {
-                            createdAt: "desc"
-                        },
-                        take: 1,
-                        select: {
-                            isRead: true,
-                            content: true,
-                            createdAt: true,
-                            senderRole: true,
-                            senderId: true,
-                        }
-                    }
-                },
-                orderBy: {
-                    lastMessageAt: "desc"
-                }
-            })
-            return conversations;
+                include: this.conversationsListIncludeDriver,
+                orderBy: [{ lastMessageAt: 'desc' }, { id: 'desc' }],
+                take: limit + 1,
+                skip: cursorId ? 1 : 0,
+                ...(cursorId ? { cursor: { id: cursorId } } : {}),
+            });
+
+            const hasMore = conversations.length > limit;
+            const data = hasMore ? conversations.slice(0, limit) : conversations;
+            return { data, hasMore };
         } catch (error) {
             console.error(error);
-            throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
+            if (error instanceof BadRequestException) throw error;
+            throw new InternalServerErrorException('Dicka shkoi gabim ne server.');
         }
     }
 

@@ -23,28 +23,49 @@ export class NotificationsService {
         }
     }
 
-    async getUserNotifications(userId: string){
+    /** Cursor is the `id` of the last notification from the previous page (createdAt desc). */
+    async getUserNotifications(
+        userId: string,
+        options?: { cursorId?: string; limit?: number },
+    ) {
         try {
+            const limit = Math.min(50, Math.max(1, options?.limit ?? 20));
+            const cursorId = options?.cursorId?.trim() || undefined;
+
+            if (cursorId) {
+                const cursorRow = await this.prisma.notification.findFirst({
+                    where: { id: cursorId, userId },
+                    select: { id: true },
+                });
+                if (!cursorRow) {
+                    throw new BadRequestException('Kursor i pavlefshëm për faqosje.');
+                }
+            }
+
             const notifications = await this.prisma.notification.findMany({
-                where: {userId},
-                orderBy: {
-                    createdAt: "desc"
-                },
+                where: { userId },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+                take: limit + 1,
+                skip: cursorId ? 1 : 0,
+                ...(cursorId ? { cursor: { id: cursorId } } : {}),
                 include: {
                     user: {
                         select: {
                             id: true,
                             image: true,
-                            fullName: true
-                        }
-                    }
-                }
-            })
+                            fullName: true,
+                        },
+                    },
+                },
+            });
 
-            return notifications;
+            const hasMore = notifications.length > limit;
+            const data = hasMore ? notifications.slice(0, limit) : notifications;
+            return { data, hasMore };
         } catch (error) {
             console.error(error);
-            throw new InternalServerErrorException("Dicka shkoi gabim ne server")
+            if (error instanceof BadRequestException) throw error;
+            throw new InternalServerErrorException('Dicka shkoi gabim ne server');
         }
     }
 

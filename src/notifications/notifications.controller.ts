@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Param, Patch, Req } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Patch, Query, Req } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { Roles } from 'common/decorators/roles.decorator';
 import { Role, User } from '@prisma/client';
@@ -12,9 +12,18 @@ export class NotificationsController {
 
     @Roles(Role.DRIVER, Role.PASSENGER)
     @Get('get-notifications')
-    async getNotifications(@Req() req: Request){
+    async getNotifications(
+        @Req() req: Request,
+        @Query('cursor') cursor?: string,
+        @Query('limit') limitRaw?: string,
+    ) {
         const user = req.user as User;
-        return await this.notificationService.getUserNotifications(user.id)
+        const parsed = limitRaw != null ? Number.parseInt(limitRaw, 10) : NaN;
+        const limit = Number.isFinite(parsed) ? parsed : 20;
+        return await this.notificationService.getUserNotifications(user.id, {
+            cursorId: cursor,
+            limit,
+        });
     }
 
     @Roles(Role.DRIVER, Role.PASSENGER)

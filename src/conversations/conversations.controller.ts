@@ -37,16 +37,34 @@ export class ConversationsController {
 
     @Roles(Role.PASSENGER)
     @Get('get-conversations-passenger')
-    async getAllConversationsByPassenger(@Req() req: Request){
+    async getAllConversationsByPassenger(
+        @Req() req: Request,
+        @Query('cursor') cursor?: string,
+        @Query('limit') limitRaw?: string,
+    ) {
         const user = req.user as User;
-        return await this.conversationsService.getAllConversationsByPassenger(user.id);
+        const parsed = limitRaw != null ? Number.parseInt(limitRaw, 10) : NaN;
+        const limit = Number.isFinite(parsed) ? parsed : 20;
+        return await this.conversationsService.getAllConversationsByPassenger(user.id, {
+            cursorId: cursor,
+            limit,
+        });
     }
 
     @Roles(Role.DRIVER)
     @Get('get-active-conversations-driver')
-    async getAllActiveConversationsByPassenger(@Req() req: Request){
+    async getAllActiveConversationsByDriver(
+        @Req() req: Request,
+        @Query('cursor') cursor?: string,
+        @Query('limit') limitRaw?: string,
+    ) {
         const user = req.user as User;
-        return await this.conversationsService.getAllActiveConversationsByDriver(user.id);
+        const parsed = limitRaw != null ? Number.parseInt(limitRaw, 10) : NaN;
+        const limit = Number.isFinite(parsed) ? parsed : 20;
+        return await this.conversationsService.getAllActiveConversationsByDriver(user.id, {
+            cursorId: cursor,
+            limit,
+        });
     }
 
     @Roles(Role.DRIVER, Role.PASSENGER, Role.SUPPORT)
