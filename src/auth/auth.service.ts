@@ -195,7 +195,10 @@ export class AuthService {
     async registerUser(registerDto: RegisterUserDto, file: Express.Multer.File){
         try {
             const user = await this.prisma.user.findUnique({where: {email: registerDto.email}})
-            if(user) throw new UnauthorizedException('Ky email vecse egziston.');
+            if(user) throw new BadRequestException('Ky email vecse egziston.');
+            if(registerDto.password !== registerDto.confirmPassword) {
+                throw new BadRequestException('Fjalekalimet nuk perputhen.');
+            }
             const hashedPassword = await bcryptjs.hash(registerDto.password, 10);
             const resultImage = await this.uploadService.uploadFile(file, `users/${registerDto.email}`);
 
@@ -205,7 +208,7 @@ export class AuthService {
                         email: registerDto.email,
                         fullName: registerDto.fullName,
                         user_verified: false,
-                        role: registerDto.accountType === 0 ? "DRIVER" : "PASSENGER",
+                        role: registerDto.accountType === 0 ? "PASSENGER" : "DRIVER",
                         password: hashedPassword,
                         image: resultImage.success ? resultImage.data?.url : ""
                     },
