@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AddFixedTarifDto } from './dto/addFixedTarifs.dto';
 import { DriverFixedTarifs, KosovoCity, User } from '@prisma/client';
@@ -41,6 +41,7 @@ export class DriversService {
             return fixedTarifs;
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
         }
     }
@@ -78,6 +79,7 @@ export class DriversService {
             }
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -108,6 +110,7 @@ export class DriversService {
 
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -126,6 +129,7 @@ export class DriversService {
             }
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -206,6 +210,7 @@ export class DriversService {
             };
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server");
         }
     }
@@ -226,8 +231,8 @@ export class DriversService {
 
             return ride;
         } catch (error) {
-            if (error instanceof NotFoundException) throw error;
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException('Dicka shkoi gabim ne server');
         }
     }
@@ -276,6 +281,7 @@ export class DriversService {
             return result
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }

@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { toFixedNoRound } from 'common/utils/toFixed.utils';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { GetAllDriversDtoFilters } from './dto/getAllDrivers.dto';
@@ -32,6 +32,7 @@ export class PassengersService {
             return {success: true};
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -52,6 +53,7 @@ export class PassengersService {
             return rotations;
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server");
         }
     }
@@ -70,6 +72,7 @@ export class PassengersService {
             return {success: true}
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -84,6 +87,7 @@ export class PassengersService {
             return {success: true};
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -209,6 +213,7 @@ export class PassengersService {
 
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim!");
         }
     }
@@ -353,6 +358,7 @@ export class PassengersService {
             };
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server");
         }
     }
@@ -484,6 +490,7 @@ export class PassengersService {
             }
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -528,6 +535,7 @@ export class PassengersService {
             return {success: true};
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -543,6 +551,7 @@ export class PassengersService {
             return {success: true};
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }

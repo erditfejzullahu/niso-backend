@@ -72,6 +72,7 @@ export class RideService {
             return {success: true}
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -313,6 +314,7 @@ export class RideService {
 
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -478,6 +480,7 @@ export class RideService {
 
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
         }
     }
@@ -523,6 +526,7 @@ export class RideService {
             return {success: true};
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -605,6 +609,7 @@ export class RideService {
             return {success: true}
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -650,6 +655,7 @@ export class RideService {
             return {success: true}
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }

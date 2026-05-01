@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { ConversationsGatewayServices } from 'src/conversations/conversations.gateway-services';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -19,6 +19,7 @@ export class NotificationsService {
             return notification;
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -64,7 +65,7 @@ export class NotificationsService {
             return { data, hasMore };
         } catch (error) {
             console.error(error);
-            if (error instanceof BadRequestException) throw error;
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException('Dicka shkoi gabim ne server');
         }
     }
@@ -79,6 +80,7 @@ export class NotificationsService {
             return { count: unread };
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server");
         }
     }
@@ -147,6 +149,7 @@ export class NotificationsService {
             }
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -204,6 +207,7 @@ export class NotificationsService {
 
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -220,6 +224,7 @@ export class NotificationsService {
             return {success: true}
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -233,6 +238,7 @@ export class NotificationsService {
             return {success: true}
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }

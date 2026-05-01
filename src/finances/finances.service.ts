@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { toFixedNoRound } from 'common/utils/toFixed.utils';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -70,6 +70,7 @@ export class FinancesService {
 
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -133,6 +134,7 @@ export class FinancesService {
 
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -178,6 +180,7 @@ export class FinancesService {
             return allDriverEarnings;
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -223,6 +226,7 @@ export class FinancesService {
             return allDriverEarnings;
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -310,6 +314,7 @@ export class FinancesService {
             }
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -380,6 +385,7 @@ export class FinancesService {
             }
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
         }
     }

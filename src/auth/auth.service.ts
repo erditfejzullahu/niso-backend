@@ -1,4 +1,4 @@
-import { BadRequestException, forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, forwardRef, HttpException, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import bcryptjs from "bcryptjs"
@@ -236,6 +236,7 @@ export class AuthService {
             return {success: true}
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException('Dicka shkoi gabim ne server!')
         }
     }
@@ -307,6 +308,7 @@ export class AuthService {
             }
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException('Dicka shkoi gabim ne server!')
         }
     }
@@ -326,6 +328,7 @@ export class AuthService {
             return {success: true};
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -376,6 +379,7 @@ export class AuthService {
             return {success: true}
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException('Dicka shkoi gabim ne server!')
         }
     }
@@ -398,6 +402,7 @@ export class AuthService {
             }
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server!")
         }
     }

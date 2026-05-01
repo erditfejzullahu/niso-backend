@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, forwardRef, HttpException, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConversationsGatewayServices } from './conversations.gateway-services';
 import { User } from '@prisma/client';
@@ -132,6 +132,7 @@ export class ConversationsService {
             //logic to notify supporter.
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -189,6 +190,7 @@ export class ConversationsService {
             }
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server")
         }
     }
@@ -240,6 +242,7 @@ export class ConversationsService {
             return {conversation};
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }
     }
@@ -280,7 +283,7 @@ export class ConversationsService {
             return { data, hasMore };
         } catch (error) {
             console.error(error);
-            if (error instanceof BadRequestException) throw error;
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException('Dicka shkoi gabim ne server.');
         }
     }
@@ -324,7 +327,7 @@ export class ConversationsService {
             return { data, hasMore };
         } catch (error) {
             console.error(error);
-            if (error instanceof BadRequestException) throw error;
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException('Dicka shkoi gabim ne server.');
         }
     }
@@ -410,13 +413,7 @@ export class ConversationsService {
             return { messages: messagesWithoutConversations, hasMore };
         } catch (error) {
             console.error(error);
-            if (
-                error instanceof BadRequestException ||
-                error instanceof ForbiddenException ||
-                error instanceof NotFoundException
-            ) {
-                throw error;
-            }
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
         }
     }
@@ -443,6 +440,7 @@ export class ConversationsService {
             return { count: unread };
         } catch (error) {
             console.error(error);
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
         }
     }
@@ -481,7 +479,7 @@ export class ConversationsService {
 
         } catch (error) {
             console.error(error);
-            if(error instanceof NotFoundException || error instanceof ForbiddenException) throw error;
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim.")
         }
     };
@@ -511,7 +509,7 @@ export class ConversationsService {
             return { success: true };
         } catch (error) {
             console.error(error);
-            if(error instanceof NotFoundException || error instanceof ForbiddenException) throw error;
+            if (error instanceof HttpException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.");
         }
     }
