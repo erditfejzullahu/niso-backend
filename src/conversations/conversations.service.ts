@@ -352,8 +352,12 @@ export class ConversationsService {
             if(!conversation){
                 throw new NotFoundException("Biseda nuk u gjet.");
             }
-            
-            if(conversation.isResolved) throw new ForbiddenException("Biseda ka perfunduar.");
+
+            const isParticipant =
+                conversation.driverId === userId ||
+                conversation.passengerId === userId ||
+                conversation.supportId === userId;
+            if(!isParticipant) throw new ForbiddenException("Ju nuk keni leje per te lexuar kete bisede.");
             
             //mark other users messages as read
             const whoSendedMessagesId = userId === conversation.driverId ? conversation.passengerId : userId === conversation.passengerId ? conversation.driverId : conversation.supportId;
@@ -456,9 +460,13 @@ export class ConversationsService {
             const passenger = await this.prisma.user.findUnique({where: {id: passengerId}, select: {id: true}})
             if(!passenger) throw new NotFoundException("Pasagjeri nuk u gjet.");
 
-            const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {id: true, passengerId: true, driverId: true}});
+            const conversation = await this.prisma.conversations.findUnique({
+                where: {id: conversationId},
+                select: {id: true, passengerId: true, driverId: true, isResolved: true}
+            });
             if(!conversation || !conversation.driverId) throw new NotFoundException("Nuk u gjet ndonje bisede.");
             if(conversation.passengerId !== passenger.id) throw new ForbiddenException("Ju nuk keni te drejte per te kryer kete veprim.");
+            if(!conversation.isResolved) return {success: true};
 
             await this.prisma.conversations.update({
                 where: {id: conversation.id},
@@ -473,6 +481,7 @@ export class ConversationsService {
 
         } catch (error) {
             console.error(error);
+            if(error instanceof NotFoundException || error instanceof ForbiddenException) throw error;
             throw new InternalServerErrorException("Dicka shkoi gabim.")
         }
     };

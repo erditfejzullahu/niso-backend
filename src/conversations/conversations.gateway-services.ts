@@ -22,9 +22,9 @@ export class ConversationsGatewayServices{
     //check if type of message is not ride related and if its allowed to chat
     private async checkConversationAllowanceAndType(driverId: string, passengerId: string, conversationId: string){
         try {
-            const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {driverId: true, passengerId: true, type: true, isResolved: true}});
+            const conversation = await this.prisma.conversations.findUnique({where: {id: conversationId}, select: {driverId: true, passengerId: true, isResolved: true}});
             if(!conversation) return false;
-            if(conversation.type === "RIDE_RELATED" || conversation.isResolved) return false;
+            if(conversation.isResolved) return false;
             if((conversation.driverId !== driverId && conversation.driverId !== passengerId) || (conversation.passengerId !== driverId && conversation.passengerId !== passengerId)) return false;
             return true;
         } catch (error) {

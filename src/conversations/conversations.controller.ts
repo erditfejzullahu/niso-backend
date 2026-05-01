@@ -88,6 +88,13 @@ export class ConversationsController {
         return await this.conversationsService.contactDriverForDifferentReason(user.id, conversationId);
     }
 
+    @Roles(Role.PASSENGER)
+    @Patch('reopen-conversation/:id')
+    async reopenConversationByPassenger(@Req() req: Request, @Param("id") conversationId: string){
+        const user = req.user as User;
+        return await this.conversationsService.contactDriverForDifferentReason(user.id, conversationId);
+    }
+
     @Roles(Role.DRIVER)
     @Get('contact-passenger-allowance/:id')
     async getIntoConversationWithPassenger(@Req() req: Request, @Param("id") conversationId: string){
