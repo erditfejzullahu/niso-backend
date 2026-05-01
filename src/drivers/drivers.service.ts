@@ -130,6 +130,24 @@ export class DriversService {
         }
     }
 
+    private readonly availableRideSelect = {
+        id: true,
+        price: true,
+        fromAddress: true,
+        toAddress: true,
+        status: true,
+        distanceKm: true,
+        distanceCalculatedPriceRide: true,
+        createdAt: true,
+        isUrgent: true,
+        passenger: {
+            select: {
+                fullName: true,
+                image: true,
+            },
+        },
+    };
+
     async getAvailableRides(filter: GetAvailableRidesDto){
         try {
             const whereClause: any = {
@@ -170,23 +188,7 @@ export class DriversService {
                     orderBy: orderByClause,
                     skip: filter.getSkip(),
                     take: filter.limit,
-                    select: {
-                        id: true,
-                        price: true,
-                        fromAddress: true,
-                        toAddress: true,
-                        status: true,
-                        distanceKm: true,
-                        distanceCalculatedPriceRide: true,
-                        createdAt: true,
-                        isUrgent: true,
-                        passenger: {
-                        select: {
-                            fullName: true,
-                            image: true,
-                        }
-                        }
-                    }
+                    select: this.availableRideSelect,
                 }),
                 this.prisma.rideRequest.count({
                     where: whereClause
@@ -205,6 +207,28 @@ export class DriversService {
         } catch (error) {
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server");
+        }
+    }
+
+    async getAvailableRideById(rideRequestId: string) {
+        try {
+            const ride = await this.prisma.rideRequest.findFirst({
+                where: {
+                    id: rideRequestId,
+                    status: 'WAITING',
+                },
+                select: this.availableRideSelect,
+            });
+
+            if (!ride) {
+                throw new NotFoundException('Nuk u gjet kërkesa e udhëtimit ose nuk është më e disponueshme.');
+            }
+
+            return ride;
+        } catch (error) {
+            if (error instanceof NotFoundException) throw error;
+            console.error(error);
+            throw new InternalServerErrorException('Dicka shkoi gabim ne server');
         }
     }
 

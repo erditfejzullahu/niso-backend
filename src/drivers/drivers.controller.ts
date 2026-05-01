@@ -29,6 +29,12 @@ export class DriversController {
     }
 
     @Roles(Role.DRIVER)
+    @Get('available-rides/:id')
+    async getAvailableRideById(@Param('id') rideRequestId: string) {
+        return await this.driverService.getAvailableRideById(rideRequestId);
+    }
+
+    @Roles(Role.DRIVER)
     @Get('available-rides')
     async getAvailableRides(@Req() req: Request, @Query() filterParams: GetAvailableRidesDto){        
         const user = req.user as User;

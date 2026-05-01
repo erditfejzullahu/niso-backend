@@ -79,8 +79,18 @@ export class RideService {
     async notifyPassengerThatDriverIsReady(driverId: string, rideRequestId: string, body: NotifyPassengerThatDriverReadyDto){
         try {
 
-            const rideRequest = await this.prisma.rideRequest.findUnique({where: {id: rideRequestId}, select: {passengerId: true, passenger: {select: {fullName: true}}}})
+            const rideRequest = await this.prisma.rideRequest.findUnique({
+                where: {id: rideRequestId},
+                select: {
+                    passengerId: true,
+                    status: true,
+                    passenger: {select: {fullName: true}}
+                }
+            })
             if(!rideRequest) throw new NotFoundException("Nuk u gjet kerkese e udhetimit.");
+            if(rideRequest.status !== "WAITING") {
+                throw new BadRequestException("Ky udhëtim nuk është më në pritje. Ju nuk mund te shprehni gadishmerine per udhetimin.");
+            }
 
             const driver = await this.prisma.user.findUnique({where: {id: driverId, role: "DRIVER"}, select: {id: true, fullName: true, image: true}})
             if(!driver) throw new NotFoundException("Nuk u gjet shoferi.");
