@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateNewRideRequestDto } from './dto/createRide.dto';
 import { Conversations, Message, RideRequest, User, UserInformation } from '@prisma/client';
@@ -85,9 +85,11 @@ export class RideService {
             const driver = await this.prisma.user.findUnique({where: {id: driverId, role: "DRIVER"}, select: {id: true, fullName: true, image: true}})
             if(!driver) throw new NotFoundException("Nuk u gjet shoferi.");
 
-            await this.prisma.$transaction(async (prisma) => {
+            let rideRequestTimesContacted: number = 0;
 
-                const conversation = await prisma.conversations.findFirst({where: {driverId: driverId, passengerId: rideRequest.passengerId}, select: {id: true}})
+            const data = await this.prisma.$transaction(async (prisma) => {
+
+                const conversation = await prisma.conversations.findFirst({where: {driverId: driverId, passengerId: rideRequest.passengerId}, select: {id: true, rideRequestTimesContacted: true}})
                 if(!conversation) {
                     const newConversation = await prisma.conversations.create({
                         data: {
@@ -96,9 +98,11 @@ export class RideService {
                             rideRequestId: rideRequestId,
                             type: "RIDE_RELATED",
                             isResolved: false,
-                            lastMessageAt: new Date()
+                            lastMessageAt: new Date(),
+                            rideRequestTimesContacted: 1
                         }
                     })
+                    rideRequestTimesContacted = 1;
                     await prisma.message.create({
                         data: {
                             conversationId: newConversation.id,
@@ -108,15 +112,19 @@ export class RideService {
                         }
                     })
                 } else {
+                    if(conversation.rideRequestTimesContacted >= 3) {
+                        throw new BadRequestException("Ju vetem se keni shfaqur gadishmerine per udhetimin 3 here. Nuk mund te shprehni prap gadishmerine per udhetimin.");
+                    }
                     const updatedConversation = await prisma.conversations.update({
                         where: {id: conversation.id},
                         data: {
                             lastMessageAt: new Date(),
                             rideRequestId: rideRequestId,
                             type: "RIDE_RELATED",
-                            isResolved: false,
+                            rideRequestTimesContacted: {increment: 1}
                         }
                     })
+                    rideRequestTimesContacted = conversation.rideRequestTimesContacted + 1;
                     await prisma.message.create({
                         data: {
                             conversationId: updatedConversation.id,
@@ -149,20 +157,27 @@ export class RideService {
                     }
                 })
 
-                Promise.allSettled([
-                    this.conversationGateway.countUnreadMessages(rideRequest.passengerId).catch(error => {
-                        console.error(error);
-                    }),
-                    this.conversationGateway.countUnreadNotifications(driverId).catch(error => {
-                        console.error(error);
-                    }),
-                    this.conversationGateway.countUnreadNotifications(rideRequest.passengerId).catch(error => {
-                        console.error(error);
-                    }),
-                ])
+                return {rideRequestTimesContacted: rideRequestTimesContacted}
             })
 
+            Promise.allSettled([
+                this.conversationGateway.countUnreadMessages(rideRequest.passengerId).catch(error => {
+                    console.error(error);
+                }),
+                this.conversationGateway.countUnreadNotifications(driverId).catch(error => {
+                    console.error(error);
+                }),
+                this.conversationGateway.countUnreadNotifications(rideRequest.passengerId).catch(error => {
+                    console.error(error);
+                }),
+            ])
+
+            return {success: true, message: data.rideRequestTimesContacted === 3 ? `Ju sapo shprehet gadishmerine per udhetimin. Nuk mund te shprehni prap gadishmerine per udhetimin.` : `Ju sapo shprehet gadishmerine per udhetimin. Keni mundesine per ${3 - data.rideRequestTimesContacted} here te shprehni gadishmerine per udhetimin.`}
+
         } catch (error) {
+            // Preserve expected HTTP errors (e.g. BadRequest/Forbidden/NotFound)
+            if (error instanceof HttpException) throw error;
+
             console.error(error);
             throw new InternalServerErrorException("Dicka shkoi gabim ne server.")
         }

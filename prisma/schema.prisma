@@ -419,6 +419,8 @@ model Conversations {
   passenger User? @relation(fields: [passengerId], references: [id], name: "passengerConversations")
   passengerId String?
 
+  // mos me lan shoferin me ja tesh passagjerit
+  rideRequestTimesContacted Int @default(0)
   rideRequest RideRequest? @relation(fields: [rideRequestId], references: [id], onDelete: SetNull)
   rideRequestId String? @unique
 
